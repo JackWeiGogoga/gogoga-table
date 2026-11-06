@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { fillSeries } from "../../src/core/fill";
 
-test("一个数字：照抄；两个以上：等差接着排", () => {
-  assert.deepEqual(fillSeries(["5"], 3), ["5", "5", "5"]);
+test("一个数字：加 1 往下排（和 WPS、飞书一样）；两个以上：等差接着排", () => {
+  assert.deepEqual(fillSeries(["16"], 3), ["17", "18", "19"]);
+  assert.deepEqual(fillSeries(["16"], 2, true), ["15", "14"]);
+  assert.deepEqual(fillSeries(["1.5"], 2), ["2.5", "3.5"]);
   assert.deepEqual(fillSeries(["1", "2"], 3), ["3", "4", "5"]);
   assert.deepEqual(fillSeries(["10", "20", "30"], 2), ["40", "50"]);
   assert.deepEqual(fillSeries(["0.1", "0.2"], 2), ["0.3", "0.4"]);
@@ -90,4 +92,11 @@ test("整张表：样式、行距写进注释，null 去掉；整表对齐、清
   assert.equal(clearAllBg(t).meta.bg, undefined);
   assert.equal(autoWidthAll(t).meta.w, undefined);
   assert.deepEqual(parseMetaLine('<!-- gogoga-table: {"style":"fancy","density":"compact"} -->'), { density: "compact" });
+});
+
+test("按住 ⌥：一律照抄", () => {
+  assert.deepEqual(fillSeries(["16"], 3, false, true), ["16", "16", "16"]);
+  assert.deepEqual(fillSeries(["15", "16"], 3, false, true), ["15", "16", "15"]);
+  assert.deepEqual(fillSeries(["第1期"], 2, false, true), ["第1期", "第1期"]);
+  assert.deepEqual(fillSeries(["2026-11-06"], 1, false, true), ["2026-11-06"]);
 });

@@ -293,7 +293,8 @@ export type FillDir = "down" | "up" | "right" | "left";
  * 把选区 src 往 dir 方向填 count 格：每一列（上下填）或每一行（左右填）各自按 fillSeries 推值。
  * 往下 / 往右超出表格就加行加列；往上填不进表头（除非选区本身就从表头开始）
  */
-export function fillRange(t: Table, src: Rect, dir: FillDir, count: number): { table: Table; filled: Rect } {
+/** copy：一律照抄，不按规律（拖的时候按住 ⌥） */
+export function fillRange(t: Table, src: Rect, dir: FillDir, count: number, copy = false): { table: Table; filled: Rect } {
   let n = cloneTable(t);
   const vertical = dir === "down" || dir === "up";
   let cnt = count;
@@ -306,13 +307,13 @@ export function fillRange(t: Table, src: Rect, dir: FillDir, count: number): { t
     for (let c = src.c1; c <= src.c2; c++) {
       const source: string[] = [];
       for (let r = src.r1; r <= src.r2; r++) source.push(n.cells[r][c]);
-      const vals = fillSeries(source, cnt, dir === "up");
+      const vals = fillSeries(source, cnt, dir === "up", copy);
       vals.forEach((v, k) => (n.cells[dir === "down" ? src.r2 + 1 + k : src.r1 - 1 - k][c] = v));
     }
   } else {
     for (let r = src.r1; r <= src.r2; r++) {
       const source = n.cells[r].slice(src.c1, src.c2 + 1);
-      const vals = fillSeries(source, cnt, dir === "left");
+      const vals = fillSeries(source, cnt, dir === "left", copy);
       vals.forEach((v, k) => (n.cells[r][dir === "right" ? src.c2 + 1 + k : src.c1 - 1 - k] = v));
     }
   }

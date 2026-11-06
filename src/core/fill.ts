@@ -1,11 +1,11 @@
 /**
- * 下拉填充：按选中的几格（一列或一行）推出往后的值，规则和 Excel 一样：
- * - 只有一个数字：照抄；两个以上数字：按等差接着排（1、3 → 5、7）
+ * 下拉填充：按选中的几格（一列或一行）推出往后的值（和 WPS、飞书表格一样默认按规律填）：
+ * - 数字：一个就加 1 往下排（16 → 17、18）；两个以上按等差接着排（1、3 → 5、7）
  * - 文字带编号（第 1 期、项目3、Q1）：编号接着加，一格也加；几格的编号差一样就按这个差
  * - 日期（2026-11-06、2026/11/06）：一格按天往后；几格按它们的间隔
  * - 周一…周日、星期一…、一月…十二月、Mon…、Jan…、甲乙丙丁…：按顺序接着排，转一圈回到开头
  * - 别的：把选中的几格循环照抄
- * backward 为 true 时往上 / 往左填（序列倒着走）
+ * backward 为 true 时往上 / 往左填（序列倒着走）；copy 为 true 时一律循环照抄（拖的时候按住 ⌥）
  */
 
 const LISTS: string[][] = [
@@ -58,19 +58,25 @@ function fmtDate(t: number, sep: string, pad: boolean): string {
  * 按 source（选中的几格，按填充方向排好）推出接下来 count 个值。
  * backward：往上 / 往左填，第 1 个值紧挨着 source[0] 的前面
  */
-export function fillSeries(source: readonly string[], count: number, backward = false): string[] {
+export function fillSeries(source: readonly string[], count: number, backward = false, copy = false): string[] {
   const src = source.map((s) => s.trim());
   const n = src.length;
   if (!n || count <= 0) return [];
   const out: string[] = [];
   // k：离 source 的距离（1 = 紧挨着）。往后填接在最后一格后面，往前填接在第一格前面
   const at = (k: number) => (backward ? -k : n - 1 + k);
+  if (copy) {
+    for (let k = 1; k <= count; k++) {
+      const i = at(k);
+      out.push(source[((i % n) + n) % n]);
+    }
+    return out;
+  }
 
   // 数字
   if (src.every((s) => NUM_RE.test(s))) {
-    if (n === 1) return Array.from({ length: count }, () => source[0]);
     const vals = src.map(Number);
-    const step = (vals[n - 1] - vals[0]) / (n - 1);
+    const step = n === 1 ? 1 : (vals[n - 1] - vals[0]) / (n - 1);
     const places = Math.max(...src.map(decimals), decimals(String(step)) > 6 ? 6 : decimals(String(step)));
     for (let k = 1; k <= count; k++) out.push(fmtNum(vals[0] + step * at(k), places));
     return out;

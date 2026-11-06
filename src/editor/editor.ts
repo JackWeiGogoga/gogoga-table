@@ -821,7 +821,8 @@ export class TableEditor {
       // 合成事件
     }
     this.root.classList.add("is-filling");
-    const state: { plan: { dir: FillDir; count: number } | null } = { plan: null };
+    // copy：按住 ⌥ 拖是照抄（松开时按住也算）
+    const state: { plan: { dir: FillDir; count: number } | null; copy: boolean } = { plan: null, copy: ev.altKey };
     // 每一行、每一列的屏幕位置（表格外面按最后一行 / 列的大小往外推）
     const rows = Array.from({ length: rowCount(this.table) }, (_, r) => this.lineBox(r, true));
     const cols = Array.from({ length: colCount(this.table) }, (_, c) => this.lineBox(c, false));
@@ -831,6 +832,8 @@ export class TableEditor {
       return lines.length - 1 + Math.ceil((v - last.b) / Math.max(20, last.b - last.a));
     };
     const move = (e: PointerEvent) => {
+      state.copy = e.altKey;
+      this.root.classList.toggle("is-fill-copy", e.altKey);
       const r = indexAt(e.clientY, rows);
       const c = indexAt(e.clientX, cols);
       const down = r - src.r2;
@@ -841,15 +844,16 @@ export class TableEditor {
       state.plan = best <= 0 ? null : best === down ? { dir: "down", count: down } : best === right ? { dir: "right", count: right } : best === up ? { dir: "up", count: up } : { dir: "left", count: left };
       this.showFillPreview(src, state.plan, rows, cols);
     };
-    const up = () => {
+    const up = (e?: PointerEvent) => {
+      if (e && e.type === "pointerup") state.copy = e.altKey;
       handle.removeEventListener("pointermove", move);
       handle.removeEventListener("pointerup", up);
       handle.removeEventListener("pointercancel", cancel);
-      this.root.classList.remove("is-filling");
+      this.root.classList.remove("is-filling", "is-fill-copy");
       this.fillPreview.classList.remove("is-shown");
       const p = state.plan;
       if (!p) return;
-      const { table, filled } = fillRange(this.table, src, p.dir, p.count);
+      const { table, filled } = fillRange(this.table, src, p.dir, p.count, state.copy);
       if (table === this.table) return;
       // 填完选中整片（原来的 + 填上的）
       this.apply(table, { r: filled.r2, c: filled.c2 });
