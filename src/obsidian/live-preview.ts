@@ -5,13 +5,13 @@
  * 只动顶格写的表格（规则见 core/find.ts），其余照旧由 Obsidian 显示。
  */
 
-import { type EditorState, type Extension, Prec, RangeSetBuilder, StateField, type Text } from "@codemirror/state";
+import { EditorSelection, EditorState, type Extension, Prec, RangeSetBuilder, StateField, type Text, Transaction } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView, WidgetType } from "@codemirror/view";
 import { redo, undo } from "@codemirror/commands";
 import { Component, editorInfoField, editorLivePreviewField } from "obsidian";
 import { findTables, type TableBlock } from "../core/find";
 import { parseTable, serializeTable, type Table } from "../core/table";
-import { TableEditor } from "../editor/editor";
+import { sameTable, TableEditor } from "../editor/editor";
 import type { TableHostFactory } from "./host";
 
 
@@ -39,6 +39,10 @@ class TableWidget extends WidgetType {
   toDOM(view: EditorView): HTMLElement {
     const wrap = document.createElement("div");
     wrap.className = "ggt-lp";
+    // 表格里的事件不往编辑器上冒：我们的格子也是 <td>/<th>，Obsidian 自己的表格逻辑看到会把整张表重新排版
+    for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "dblclick", "contextmenu", "keydown", "keyup", "keypress", "beforeinput", "input", "compositionstart", "compositionupdate", "compositionend", "focusin", "focusout", "paste", "copy", "cut", "dragstart", "drop"]) {
+      wrap.addEventListener(type, (ev) => ev.stopPropagation());
+    }
     const owner = new Component();
     owner.load();
     (wrap as HTMLElement & { ggtOwner?: Component }).ggtOwner = owner;
@@ -143,5 +147,100 @@ export function livePreviewTables(factory: TableHostFactory): Extension {
     },
     provide: (f) => Prec.highest(EditorView.decorations.from(f)),
   });
-  return field;
+  /**
+   * 编辑器的光标不能停在我们接管的表格里：光标一进表格那几行，Obsidian 自己的表格逻辑就会把整张表按它的格式重排
+   * （补空格对齐，中文宽度还算错）。恢复上次位置、搜索跳转、链接跳到标题、撤销都可能把光标放进去，
+   * 这里在同一次更新里挪到表格后面一行（表格在最后时挪到前面）
+   */
+  const keepCursorOut = Prec.highest(
+    EditorState.transactionFilter.of((tr) => {
+      if (!tr.selection && !tr.docChanged) return tr;
+      const deco = tr.state.field(field, false);
+      if (!deco || deco.size === 0) return tr;
+      const doc = tr.state.doc;
+      let moved = false;
+      const ranges = tr.state.selection.ranges.map((r) => {
+        let head = r.head;
+        let anchor = r.anchor;
+        // 表格和下面的注释是相邻的两段，挪出一段可能落进下一段：一直挪到不在任何一段里
+        const out = (pos: number): number => {
+          let res = pos;
+          for (let guard = 0; guard < 8; guard++) {
+            let hit: { from: number; to: number } | null = null;
+            deco.between(res, res, (from, to) => {
+              if (res >= from && res <= to) {
+                hit = { from, to };
+                return false;
+              }
+              return undefined;
+            });
+            if (!hit) break;
+            const h: { from: number; to: number } = hit;
+            moved = true;
+            if (h.to < doc.length) res = doc.lineAt(h.to + 1).from;
+            else {
+              res = Math.max(0, h.from - 1);
+              break;
+            }
+          }
+          return res;
+        };
+        head = out(head);
+        anchor = r.empty ? head : out(anchor);
+        return EditorSelection.range(anchor, head);
+      });
+      if (!moved) return tr;
+      // 整个换掉这次更新（不是在后面追加一次）：别的扩展从头到尾都看不到光标在表格里
+      return {
+        changes: tr.changes,
+        selection: EditorSelection.create(ranges, tr.state.selection.mainIndex),
+        effects: tr.effects,
+        scrollIntoView: tr.scrollIntoView,
+        annotations: tr.annotation(Transaction.userEvent) ? [Transaction.userEvent.of(tr.annotation(Transaction.userEvent) as string)] : [],
+      };
+    }),
+  );
+  /**
+   * 挡住 Obsidian 对我们表格的重排：它在背后还留着自己的表格对象，光标一碰到表格就会异步把整张表按它的格式重写
+   * （placeCursorInCell → dispatchTable）。不是我们发起的、并且改完内容 / 对齐 / 设置都没变的改动，就是纯排版，丢掉。
+   * 真正改了内容的照常放过；源码模式、关掉接管时我们没有装饰，这里什么都不管
+   */
+  const blockReformat = Prec.highest(
+    EditorState.transactionFilter.of((tr) => {
+      if (!tr.docChanged || tr.isUserEvent("input.table") || tr.isUserEvent("undo") || tr.isUserEvent("redo")) return tr;
+      const deco = tr.startState.field(field, false);
+      if (!deco || deco.size === 0) return tr;
+      const oldDoc = tr.startState.doc;
+      const newDoc = tr.newDoc;
+      let reformat = false;
+      let other = false;
+      tr.changes.iterChangedRanges((fromA, toA) => {
+        let inTable = false;
+        deco.between(fromA, toA, (from, to, value) => {
+          if (!(value.spec.widget instanceof TableWidget)) return;
+          if (toA < from || fromA > to) return;
+          inTable = true;
+          const before = parseAt(oldDoc, from, to);
+          const nf = tr.changes.mapPos(from, -1);
+          const nt = tr.changes.mapPos(to, 1);
+          const after = parseAt(newDoc, nf, nt);
+          if (before && after && sameTable(before, after)) reformat = true;
+          else other = true;
+        });
+        if (!inTable) other = true;
+      });
+      if (reformat && !other) return [];
+      return tr;
+    }),
+  );
+  return [field, keepCursorOut, blockReformat];
+}
+
+/** 文档里 [from, to] 这几行当成一张表解析（解析不了返回 null） */
+function parseAt(doc: Text, from: number, to: number): Table | null {
+  const a = doc.lineAt(Math.max(0, Math.min(from, doc.length))).number;
+  const b = doc.lineAt(Math.max(0, Math.min(to, doc.length))).number;
+  const lines: string[] = [];
+  for (let i = a; i <= b; i++) lines.push(doc.line(i).text);
+  return parseTable(lines, null);
 }

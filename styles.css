@@ -252,3 +252,11 @@
 @media (prefers-reduced-motion: reduce) {
   .ggt-handle, .ggt-add, .ggt-resize::after { transition: none; }
 }
+
+/* 拖动行列：被拖的那一行 / 列淡一点，落点处一条强调色的线 */
+.ggt .ggt-cell.is-drag-source { opacity: 0.45; }
+.ggt.is-dragging, .ggt.is-dragging * { cursor: grabbing !important; user-select: none; }
+.ggt-drop-line { position: absolute; z-index: 5; background: var(--ggt-sel); border-radius: 1px; pointer-events: none; }
+.ggt-drop-line.is-row { height: 2px; }
+.ggt-drop-line.is-col { width: 2px; }
+.ggt button.ggt-handle { cursor: grab; }

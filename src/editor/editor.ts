@@ -381,7 +381,7 @@ export class TableEditor {
       this.openMenu(this.cellMenu(p), ev.clientX, ev.clientY);
     });
     this.on(this.root, "pointermove", (ev) => {
-      if (this.resize || ev.pointerType === "touch") return;
+      if (this.resize || ev.pointerType === "touch" || this.root.classList.contains("is-dragging")) return;
       const cell = (ev.target as HTMLElement).closest<HTMLElement>(".ggt-cell");
       if (!cell || !this.tableEl.contains(cell)) return;
       const p = { r: Number(cell.dataset.r), c: Number(cell.dataset.c) };
@@ -594,19 +594,101 @@ export class TableEditor {
     el.tabIndex = -1;
     if (this.host.setIcon) this.host.setIcon(el, icon);
     else el.textContent = cls.includes("row") ? "⋮" : "⋯";
+    const row = cls.includes("row");
+    // 轻点打开行 / 列菜单；按住拖动换位置（和原生表格一样）
     el.addEventListener("pointerdown", (ev) => {
       ev.preventDefault();
       ev.stopPropagation();
+      if (ev.button !== 0 || el.dataset.r === undefined) return;
+      const p = { r: Number(el.dataset.r), c: Number(el.dataset.c) };
+      this.handleDrag(ev, el, row, p);
     });
-    el.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      const p = el.dataset.r !== undefined ? { r: Number(el.dataset.r), c: Number(el.dataset.c) } : null;
-      if (!p) return;
-      this.setSel(p, true);
-      const rect = el.getBoundingClientRect();
-      this.openMenu(cls.includes("row") ? this.rowMenu(p) : this.colMenu(p), rect.left, rect.bottom + 4);
-    });
+    el.addEventListener("click", (ev) => ev.preventDefault());
     return el;
+  }
+
+  /** 按住行 / 列手柄：拖出去超过几像素就是拖动换位置，否则松开时打开菜单 */
+  private handleDrag(ev: PointerEvent, handle: HTMLElement, row: boolean, p: Pos): void {
+    if (this.editing) this.commit();
+    const x0 = ev.clientX;
+    const y0 = ev.clientY;
+    const from = row ? p.r : p.c;
+    let dragging = false;
+    let target: number | null = null;
+    const doc = this.root.ownerDocument;
+    const line = doc.createElement("div");
+    line.className = "ggt-drop-line" + (row ? " is-row" : " is-col");
+    try {
+      handle.setPointerCapture(ev.pointerId);
+    } catch {
+      // 合成事件
+    }
+    const marked = () => Array.from(this.tableEl.querySelectorAll<HTMLElement>(row ? `.ggt-cell[data-r="${from}"]` : `.ggt-cell[data-c="${from}"]`));
+    /** 指针落在第几条缝上（0 = 第一行 / 列前面），返回挪过去以后的下标 */
+    const slotAt = (x: number, y: number): { index: number; at: number } => {
+      const cells = row
+        ? Array.from({ length: rowCount(this.table) - 1 }, (_, i) => this.cellEl({ r: i + 1, c: 0 }))
+        : Array.from({ length: colCount(this.table) }, (_, c) => this.cellEl({ r: 0, c }));
+      const rects = cells.map((c) => c?.getBoundingClientRect()).filter((r): r is DOMRect => !!r);
+      let slot = rects.length;
+      for (let i = 0; i < rects.length; i++) {
+        const mid = row ? rects[i].top + rects[i].height / 2 : rects[i].left + rects[i].width / 2;
+        if ((row ? y : x) < mid) {
+          slot = i;
+          break;
+        }
+      }
+      const edge = slot < rects.length ? (row ? rects[slot].top : rects[slot].left) : row ? rects[rects.length - 1].bottom : rects[rects.length - 1].right;
+      // 行的下标从 1 开始（第 0 行是表头）
+      const fromIdx = row ? from - 1 : from;
+      const dest = slot > fromIdx ? slot - 1 : slot;
+      return { index: row ? dest + 1 : dest, at: edge };
+    };
+    const move = (e: PointerEvent) => {
+      if (!dragging) {
+        if (Math.hypot(e.clientX - x0, e.clientY - y0) < 5) return;
+        dragging = true;
+        this.root.classList.add("is-dragging");
+        for (const c of marked()) c.classList.add("is-drag-source");
+        this.root.appendChild(line);
+      }
+      const { index, at } = slotAt(e.clientX, e.clientY);
+      target = index;
+      const base = this.root.getBoundingClientRect();
+      const t = this.tableEl.getBoundingClientRect();
+      if (row) line.setAttribute("style", `top:${at - base.top - 1}px;left:${t.left - base.left}px;width:${t.width}px`);
+      else line.setAttribute("style", `left:${at - base.left - 1}px;top:${t.top - base.top}px;height:${t.height}px`);
+    };
+    const up = () => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", up);
+      handle.removeEventListener("pointercancel", cancel);
+      line.remove();
+      this.root.classList.remove("is-dragging");
+      for (const c of marked()) c.classList.remove("is-drag-source");
+      if (!dragging) {
+        this.setSel(p, true);
+        const rect = handle.getBoundingClientRect();
+        this.openMenu(row ? this.rowMenu(p) : this.colMenu(p), rect.left, rect.bottom + 4);
+        return;
+      }
+      if (target === null || target === from) return;
+      if (row) this.apply(moveRow(this.table, from, target), { r: target, c: p.c });
+      else this.apply(moveCol(this.table, from, target), { r: p.r, c: target });
+    };
+    const cancel = () => {
+      dragging = false;
+      target = null;
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", up);
+      handle.removeEventListener("pointercancel", cancel);
+      line.remove();
+      this.root.classList.remove("is-dragging");
+      for (const c of marked()) c.classList.remove("is-drag-source");
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", up);
+    handle.addEventListener("pointercancel", cancel);
   }
 
   private addButton(cls: string, label: string, run: () => void): HTMLElement {
