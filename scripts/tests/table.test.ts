@@ -227,3 +227,46 @@ test("表格到空行或没有竖线的行为止", () => {
 test("表头和分隔行列数不一样：不是表格", () => {
   assert.deepEqual(findTables("| a | b |\n| --- |\n| 1 | 2 |".split("\n")), []);
 });
+
+import { serializeBlock } from "../../src/core/table";
+import { setBg as setBg2 } from "../../src/core/ops";
+
+/** 按 findTables 的范围写回一块，返回整篇 */
+function rewrite(md: string, f: (t: Table) => Table): string {
+  const lines = md.split("\n");
+  const b = findTables(lines)[0];
+  const t = parseTable(lines.slice(b.start, b.end), b.meta)!;
+  lines.splice(b.start, b.stop - b.start, ...serializeBlock(f(t), b.tail));
+  return lines.join("\n");
+}
+const TB = "| a | b |\n| --- | --- |\n| 1 | 2 |";
+const red = (t: Table) => setBg2(t, [{ r: 1, c: 0 }], "red");
+const RED = '<!-- gogoga-table: {"bg":{"A2":"red"}} -->';
+
+test("兼容 Advanced Tables 公式：我们的注释接在公式后面，公式原样留着", () => {
+  const md = `${TB}\n<!-- TBLFM: @>$2=sum -->\n\n尾`;
+  const once = rewrite(md, red);
+  assert.equal(once, `${TB}\n<!-- TBLFM: @>$2=sum -->\n${RED}\n\n尾`);
+  // 再读一次：认得出我们的注释，公式还在原位
+  const b = findTables(once.split("\n"))[0];
+  assert.deepEqual([b.end, b.metaLine, b.tail], [3, 4, ["<!-- TBLFM: @>$2=sum -->"]]);
+  // 去掉底色：注释删掉，公式留着
+  assert.equal(rewrite(once, (t) => setBg2(t, [{ r: 1, c: 0 }], null)), `${TB}\n<!-- TBLFM: @>$2=sum -->\n\n尾`);
+});
+
+test("兼容块标识：表格、^id、空行、我们的注释（不然块标识就不算这张表的）", () => {
+  const md = `${TB}\n^tbl\n\n尾`;
+  const once = rewrite(md, red);
+  assert.equal(once, `${TB}\n^tbl\n\n${RED}\n尾`);
+  const b = findTables(once.split("\n"))[0];
+  assert.deepEqual([b.metaLine, b.tail], [5, ["^tbl", ""]]);
+  // 块标识后面没空行（在文末）：加注释时补一个空行
+  assert.equal(rewrite(`${TB}\n^tbl`, red), `${TB}\n^tbl\n\n${RED}`);
+  // 去掉底色：注释删掉，块标识和空行留着
+  assert.equal(rewrite(once, (t) => setBg2(t, [{ r: 1, c: 0 }], null)), `${TB}\n^tbl\n\n尾`);
+});
+
+test("块标识后面紧贴着的注释不认作我们的（那样的写法块标识已经失效，不碰它）", () => {
+  const b = findTables(`${TB}\n^tbl\n${RED}`.split("\n"))[0];
+  assert.equal(b.metaLine, null);
+});

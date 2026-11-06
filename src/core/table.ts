@@ -310,3 +310,20 @@ export function emptyTable(rows: number, cols: number): Table {
     style: { outerPipes: true, padded: false },
   };
 }
+
+/**
+ * 写回整块（替换 findTables 给出的 [start, stop)）：表格、原样留着的行（公式注释、块标识）、我们的注释。
+ * 有块标识时，我们的注释前面必须隔一个空行，块标识才算这张表的
+ */
+export function serializeBlock(t: Table, tail: readonly string[]): string[] {
+  const lines = serializeTable(t);
+  const hasMeta = lines.length > 0 && lines[lines.length - 1].startsWith(`<!-- ${META_PREFIX}`);
+  const table = hasMeta ? lines.slice(0, -1) : lines;
+  const out = [...table, ...tail];
+  if (hasMeta) {
+    const blockId = tail.length > 0 && /^\^[A-Za-z0-9-]+\s*$/.test(tail[0]);
+    if (blockId && out[out.length - 1].trim() !== "") out.push("");
+    out.push(lines[lines.length - 1]);
+  }
+  return out;
+}

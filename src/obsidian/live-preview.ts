@@ -10,7 +10,7 @@ import { Decoration, type DecorationSet, EditorView, WidgetType } from "@codemir
 import { redo, undo } from "@codemirror/commands";
 import { Component, editorInfoField, editorLivePreviewField } from "obsidian";
 import { findTables, type TableBlock } from "../core/find";
-import { parseTable, serializeTable, type Table } from "../core/table";
+import { parseTable, serializeBlock, type Table } from "../core/table";
 import { sameTable, TableEditor } from "../editor/editor";
 import type { TableHostFactory } from "./host";
 
@@ -102,7 +102,7 @@ function blockAt(view: EditorView, dom: HTMLElement): { block: TableBlock; from:
 function writeBack(view: EditorView, dom: HTMLElement, table: Table): void {
   const at = blockAt(view, dom);
   if (!at) return;
-  const text = serializeTable(table).join("\n");
+  const text = serializeBlock(table, at.block.tail).join("\n");
   if (view.state.sliceDoc(at.from, at.to) === text) return;
   view.dispatch({ changes: { from: at.from, to: at.to, insert: text }, userEvent: "input.table" });
 }

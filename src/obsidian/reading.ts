@@ -8,7 +8,7 @@
 
 import { type App, MarkdownRenderChild, type MarkdownPostProcessorContext, TFile } from "obsidian";
 import { findTables } from "../core/find";
-import { parseTable, serializeTable, type Table } from "../core/table";
+import { parseTable, serializeBlock, type Table } from "../core/table";
 import { sameTable, TableEditor } from "../editor/editor";
 import type { TableHostFactory } from "./host";
 
@@ -23,13 +23,13 @@ class TableChild extends MarkdownRenderChild {
 }
 
 /** 文件里和 base 内容一样的表格，按离 near 行的远近排 */
-function locate(lines: string[], base: Table, near: number): { from: number; to: number }[] {
+function locate(lines: string[], base: Table, near: number): { from: number; to: number; tail: string[] }[] {
   return findTables(lines)
     .filter((b) => {
       const t = parseTable(lines.slice(b.start, b.end), b.meta);
       return t && sameTable(t, base);
     })
-    .map((b) => ({ from: b.start, to: b.stop, dist: Math.abs(b.start - near) }))
+    .map((b) => ({ from: b.start, to: b.stop, tail: b.tail, dist: Math.abs(b.start - near) }))
     .sort((a, b) => a.dist - b.dist);
 }
 
@@ -64,7 +64,7 @@ export function readingProcessor(app: App, factory: TableHostFactory) {
               const all = data.split("\n");
               const at = locate(all, prev, near)[0];
               if (!at) return data;
-              all.splice(at.from, at.to - at.from, ...serializeTable(next));
+              all.splice(at.from, at.to - at.from, ...serializeBlock(next, at.tail));
               written = true;
               return all.join("\n");
             })

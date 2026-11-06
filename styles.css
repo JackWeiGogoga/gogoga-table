@@ -313,3 +313,11 @@
 .ggt button.ggt-corner svg { width: 14px; height: 14px; }
 .is-mobile .ggt button.ggt-corner { opacity: 1; pointer-events: auto; width: 28px; height: 28px; }
 .ggt.is-readonly button.ggt-corner { display: none; }
+
+/* 导出 PDF、打印：只留表格本身，手柄、加号、按钮、选区都不要 */
+@media print {
+  .ggt-handle, .ggt-add, .ggt-corner, .ggt-resize, .ggt-fill, .ggt-fill-preview, .ggt-range-box, .ggt-input { display: none !important; }
+  .ggt::before, .ggt::after { display: none !important; }
+  .ggt .ggt-cell.is-selected { box-shadow: none !important; }
+  .ggt-scroll { overflow: visible !important; }
+}

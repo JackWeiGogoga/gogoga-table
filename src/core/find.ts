@@ -1,6 +1,9 @@
 /**
- * 在一篇笔记里找表格：哪几行是表格、紧跟在下面的一行是不是我们的注释。
- * 注释放在表格下面（和 Advanced Tables 的 TBLFM 一样）：放在上面紧贴着时，没装插件的 Obsidian 实时预览不把它当表格。
+ * 在一篇笔记里找表格：哪几行是表格、下面有没有我们的注释。
+ * 注释放在表格下面：放在上面紧贴着时，没装插件的 Obsidian 实时预览不把它当表格。
+ * 表格下面已经有别人的东西时，原样留着、我们的注释排在后面（2026-11-06 实测）：
+ * - Advanced Tables 的公式 `<!-- TBLFM: ... -->` 紧跟在表格下面：我们的注释接在公式后面
+ * - 块标识 `^id` 紧跟在表格下面：它后面必须是空行才算这张表的块标识，所以是「表格、^id、空行、我们的注释」
  * 第一版只管顶格写的表格；代码块、frontmatter、引用和 callout（> 开头）、缩进 4 格以上的都跳过，
  * 这些地方的表格仍由 Obsidian 原生显示。
  */
@@ -14,10 +17,15 @@ export interface TableBlock {
   end: number;
   /** 表格下面紧跟的注释所在行；没有注释是 null */
   metaLine: number | null;
-  /** 整块（表格 + 注释）最后一行的下一行 */
+  /** 整块（表格 + 夹在中间的行 + 注释）最后一行的下一行；写回时替换 [start, stop) */
   stop: number;
   meta: TableMeta | null;
+  /** 表格和我们的注释之间要原样留着的行（公式注释、块标识和它后面的空行） */
+  tail: string[];
 }
+
+const TBLFM_RE = /^<!--\s*TBLFM:.*-->\s*$/;
+const BLOCK_ID_RE = /^\^[A-Za-z0-9-]+\s*$/;
 
 const FENCE_RE = /^ {0,3}(`{3,}|~{3,})/;
 
@@ -60,10 +68,21 @@ export function findTables(lines: readonly string[]): TableBlock[] {
     if (i > 0 && !blockBoundary(lines[i - 1])) continue;
     let end = i + 2;
     while (end < lines.length && rowLike(lines[end])) end++;
-    const meta = end < lines.length ? parseMetaLine(lines[end]) : null;
-    const metaLine = meta ? end : null;
-    const stop = meta ? end + 1 : end;
-    out.push({ start: i, end, metaLine, meta, stop });
+    // 表格下面别人的行：公式注释（可以好几行），或者块标识（后面跟空行）
+    const tail: string[] = [];
+    let k = end;
+    if (k < lines.length && BLOCK_ID_RE.test(lines[k])) {
+      tail.push(lines[k++]);
+      if (k < lines.length && lines[k].trim() === "") tail.push(lines[k++]);
+    } else {
+      while (k < lines.length && TBLFM_RE.test(lines[k])) tail.push(lines[k++]);
+    }
+    // 块标识后面没有空行时，我们的注释不能紧贴着放（放了块标识就失效），这时不认后面的注释
+    const blockIdNoBlank = tail.length === 1 && BLOCK_ID_RE.test(tail[0]);
+    const meta = !blockIdNoBlank && k < lines.length ? parseMetaLine(lines[k]) : null;
+    const metaLine = meta ? k : null;
+    const stop = meta ? k + 1 : k;
+    out.push({ start: i, end, metaLine, meta, stop, tail });
     i = stop - 1;
   }
   return out;
