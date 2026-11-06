@@ -270,7 +270,8 @@
 /* 多格选区 */
 /* 选了一片：一个蓝框框住整片，格子不上色（原来的底色照样看得见），里面的当前格也不再单独描边 */
 .ggt-scroll { position: relative; }
-.ggt-range-box { position: absolute; display: none; z-index: 2; border: 2px solid var(--ggt-sel); border-radius: 2px; pointer-events: none; box-sizing: border-box; }
+/* 框里铺一层同色系的浅色（铺在框这一层，整片均匀；格子原来的底色透得出来） */
+.ggt-range-box { position: absolute; display: none; z-index: 2; border: 2px solid var(--ggt-sel); border-radius: 2px; background: color-mix(in srgb, var(--ggt-sel) 8%, transparent); pointer-events: none; box-sizing: border-box; }
 .ggt-range-box.is-shown { display: block; }
 .ggt.has-range .ggt-cell.is-selected { box-shadow: none !important; }
 .ggt .ggt-cell.is-merged { vertical-align: middle; }
