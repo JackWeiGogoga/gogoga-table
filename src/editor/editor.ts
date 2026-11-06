@@ -75,6 +75,8 @@ export class TableEditor {
   private sel: Pos | null = null;
   /** 多格选区的另一头（拖选、Shift）；null 是只选了一格 */
   private anchor: Pos | null = null;
+  /** 选区是点行 / 列手柄选的整行 / 整列：不因为碰到合并格往外扩 */
+  private lineSel = false;
   private editing = false;
   /** 编辑时宿主送来的新表：等这一格改完再换上 */
   private pending: Table | null = null;
@@ -308,6 +310,7 @@ export class TableEditor {
     if (!this.sel) return null;
     const a = this.anchor ?? this.sel;
     let r: Rect = { r1: Math.min(a.r, this.sel.r), c1: Math.min(a.c, this.sel.c), r2: Math.max(a.r, this.sel.r), c2: Math.max(a.c, this.sel.c) };
+    if (this.lineSel && this.anchor) return r;
     for (let grew = true; grew; ) {
       grew = false;
       for (const m of merges(this.table)) {
@@ -342,6 +345,15 @@ export class TableEditor {
   private selBox(): { x: number; y: number; w: number; h: number } | null {
     const r = this.rangeRect();
     if (!r) return null;
+    // 按行、列的实际位置算（不按格子拼）：碰到合并格时框的形状也对
+    const top = this.lineBox(r.r1, true);
+    const bottom = this.lineBox(r.r2, true);
+    const left = this.lineBox(r.c1, false);
+    const right = this.lineBox(r.c2, false);
+    if (bottom.b > top.a && right.b > left.a) {
+      const base = this.scroller.getBoundingClientRect();
+      return { x: left.a - base.left + this.scroller.scrollLeft, y: top.a - base.top + this.scroller.scrollTop, w: right.b - left.a, h: bottom.b - top.a };
+    }
     let box: { l: number; t: number; r: number; b: number } | null = null;
     for (const el of Array.from(this.tableEl.querySelectorAll<HTMLElement>(".ggt-cell"))) {
       const er = Number(el.dataset.r);
@@ -379,11 +391,9 @@ export class TableEditor {
           const b = el.getBoundingClientRect();
           box = box ? { l: Math.min(box.l, b.left), t: Math.min(box.t, b.top), r: Math.max(box.r, b.right), b: Math.max(box.b, b.bottom) } : { l: b.left, t: b.top, r: b.right, b: b.bottom };
         }
-        if (box) {
-          const base = this.scroller.getBoundingClientRect();
-          const x = box.l - base.left + this.scroller.scrollLeft;
-          const y = box.t - base.top + this.scroller.scrollTop;
-          this.rangeBox.setAttribute("style", `left:${x}px;top:${y}px;width:${box.r - box.l}px;height:${box.b - box.t}px`);
+        const sb = this.selBox();
+        if (box && sb) {
+          this.rangeBox.setAttribute("style", `left:${sb.x}px;top:${sb.y}px;width:${sb.w}px;height:${sb.h}px`);
           this.rangeBox.classList.add("is-shown");
         }
       }
@@ -407,6 +417,7 @@ export class TableEditor {
   /** extend：保留选区的另一头（Shift、拖选），否则只选这一格 */
   private setSel(p: Pos | null, focus: boolean, extend = false): void {
     if (this.editing) this.commit();
+    this.lineSel = false;
     if (extend && this.sel && p) this.anchor = this.anchor ?? this.sel;
     else this.anchor = null;
     this.sel = p && this.canon(p);
@@ -1151,13 +1162,13 @@ export class TableEditor {
       for (const c of marked()) c.classList.remove("is-drag-source");
       if (!dragging) {
         // 点手柄：选中整行 / 整列，再打开菜单
-        if (row) {
-          this.setSel({ r: p.r, c: 0 }, true);
-          this.setSel({ r: p.r, c: colCount(this.table) - 1 }, true, true);
-        } else {
-          this.setSel({ r: 0, c: p.c }, true);
-          this.setSel({ r: rowCount(this.table) - 1, c: p.c }, true, true);
-        }
+        // 选区的两头直接给，不经过 setSel：合并格会把起点挪到它的左上角（别的行），整行就选歪了
+        if (this.editing) this.commit();
+        this.anchor = row ? { r: p.r, c: 0 } : { r: 0, c: p.c };
+        this.sel = row ? { r: p.r, c: colCount(this.table) - 1 } : { r: rowCount(this.table) - 1, c: p.c };
+        this.lineSel = true;
+        this.markSel();
+        this.input.focus({ preventScroll: true });
         const rect = handle.getBoundingClientRect();
         this.openMenu(row ? this.rowMenu(p) : this.colMenu(p), rect.left, rect.bottom + 4);
         return;
