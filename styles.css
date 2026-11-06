@@ -384,3 +384,12 @@
 .ggt-pill[data-c="blue"] { background: rgba(var(--color-blue-rgb), 0.16); color: var(--color-blue); }
 .ggt-pill[data-c="purple"] { background: rgba(var(--color-purple-rgb), 0.16); color: var(--color-purple); }
 .ggt-pill[data-c="gray"] { background: rgba(var(--mono-rgb-100), 0.08); color: var(--text-muted); }
+
+/* 格子里的列表：缩进收窄到一个字左右，去掉上下间距（Obsidian 正文的列表缩进放在格子里太宽） */
+.ggt .ggt-cell .ggt-content ul, .ggt .ggt-cell .ggt-content ol { margin: 0; padding-inline-start: 1.3em; }
+.ggt-content ul ul, .ggt-content ol ol, .ggt-content ul ol, .ggt-content ol ul { padding-inline-start: 1.1em; }
+/* Obsidian 给列表项上下各加了一点内边距（优先级比这里高），表格里不要 */
+.ggt .ggt-cell .ggt-content li { margin: 0; padding-top: 0; padding-bottom: 0; }
+.ggt-content li > p { margin: 0; }
+.ggt-content .list-bullet { margin-inline-start: -0.9em; }
+.ggt-content ul > li.task-list-item, .ggt-content ol > li.task-list-item { margin-inline-start: 0; }
