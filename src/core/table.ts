@@ -22,6 +22,8 @@ export interface TableMeta {
   w?: (number | null)[];
   /** 格子底色，键是 A1 式坐标 */
   bg?: Record<string, CellColor>;
+  /** 合并的格子：每项是 "A3:B4" 这样的矩形，左上角那格的内容代表整块 */
+  merge?: string[];
   /** 不认识的键原样保留，新版本加的东西旧版本不会弄丢 */
   [key: string]: unknown;
 }
@@ -60,6 +62,27 @@ export function parseRef(ref: string): { r: number; c: number } | null {
   let c = 0;
   for (const ch of m[1]) c = c * 26 + (ch.charCodeAt(0) - 64);
   return { r: Number(m[2]) - 1, c: c - 1 };
+}
+
+export interface Rect {
+  r1: number;
+  c1: number;
+  r2: number;
+  c2: number;
+}
+
+/** "A3:B4" → 矩形（不止一格才算）；写反了的也认 */
+export function parseRange(s: string): Rect | null {
+  const [a, b] = s.split(":");
+  const p = a ? parseRef(a) : null;
+  const q = b ? parseRef(b) : null;
+  if (!p || !q) return null;
+  const r = { r1: Math.min(p.r, q.r), c1: Math.min(p.c, q.c), r2: Math.max(p.r, q.r), c2: Math.max(p.c, q.c) };
+  return r.r1 === r.r2 && r.c1 === r.c2 ? null : r;
+}
+
+export function rangeRef(r: Rect): string {
+  return `${cellRef(r.r1, r.c1)}:${cellRef(r.r2, r.c2)}`;
 }
 
 // ---------- 解析 ----------
@@ -126,6 +149,11 @@ function sanitizeMeta(raw: Record<string, unknown>): TableMeta {
     }
     if (Object.keys(bg).length) meta.bg = bg;
     else delete meta.bg;
+  }
+  if (raw.merge !== undefined) {
+    const merge = Array.isArray(raw.merge) ? raw.merge.filter((m): m is string => typeof m === "string" && parseRange(m) !== null) : [];
+    if (merge.length) meta.merge = merge;
+    else delete meta.merge;
   }
   return meta;
 }
@@ -226,6 +254,7 @@ export function metaToWrite(meta: TableMeta, cols: number): TableMeta | null {
     } else delete out.w;
   }
   if (out.bg && !Object.keys(out.bg).length) delete out.bg;
+  if (out.merge && !out.merge.length) delete out.merge;
   for (const k of Object.keys(out)) if (out[k] === undefined) delete out[k];
   return Object.keys(out).length ? out : null;
 }
