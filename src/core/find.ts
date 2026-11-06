@@ -1,5 +1,6 @@
 /**
- * 在一篇笔记里找表格：哪几行是表格、上方有没有我们的注释。
+ * 在一篇笔记里找表格：哪几行是表格、紧跟在下面的一行是不是我们的注释。
+ * 注释放在表格下面（和 Advanced Tables 的 TBLFM 一样）：放在上面紧贴着时，没装插件的 Obsidian 实时预览不把它当表格。
  * 第一版只管顶格写的表格；代码块、frontmatter、引用和 callout（> 开头）、缩进 4 格以上的都跳过，
  * 这些地方的表格仍由 Obsidian 原生显示。
  */
@@ -11,8 +12,10 @@ export interface TableBlock {
   start: number;
   /** 表格最后一行的下一行 */
   end: number;
-  /** 上方注释所在行；没有注释是 null */
+  /** 表格下面紧跟的注释所在行；没有注释是 null */
   metaLine: number | null;
+  /** 整块（表格 + 注释）最后一行的下一行 */
+  stop: number;
   meta: TableMeta | null;
 }
 
@@ -21,7 +24,7 @@ const FENCE_RE = /^ {0,3}(`{3,}|~{3,})/;
 /** 能当表格行的：不缩进、不是引用，有竖线、不是空行 */
 function rowLike(line: string): boolean {
   if (!line.trim() || !line.includes("|")) return false;
-  if (/^\s/.test(line) || line.startsWith(">")) return false;
+  if (/^\s/.test(line) || line.startsWith(">") || line.startsWith("<!--")) return false;
   return true;
 }
 
@@ -53,14 +56,15 @@ export function findTables(lines: readonly string[]): TableBlock[] {
     }
     if (!rowLike(line) || i + 1 >= lines.length || !isDelimiterRow(lines[i + 1]) || /^\s/.test(lines[i + 1])) continue;
     if (splitRow(line).length !== splitRow(lines[i + 1]).length) continue;
-    const meta = i > 0 ? parseMetaLine(lines[i - 1]) : null;
-    // 紧跟在一段文字后面的不算（拿不准 Obsidian 会不会当表格，交给它原样处理）：上一行得是空行、标题或笔记开头
-    const prev = meta ? i - 2 : i - 1;
-    if (prev >= 0 && !blockBoundary(lines[prev])) continue;
+    // 紧跟在一段文字后面的不算（拿不准 Obsidian 会不会当表格，交给它原样处理）：上一行得是空行、标题、注释或笔记开头
+    if (i > 0 && !blockBoundary(lines[i - 1])) continue;
     let end = i + 2;
     while (end < lines.length && rowLike(lines[end])) end++;
-    out.push({ start: i, end, metaLine: meta ? i - 1 : null, meta });
-    i = end - 1;
+    const meta = end < lines.length ? parseMetaLine(lines[end]) : null;
+    const metaLine = meta ? end : null;
+    const stop = meta ? end + 1 : end;
+    out.push({ start: i, end, metaLine, meta, stop });
+    i = stop - 1;
   }
   return out;
 }

@@ -86,8 +86,8 @@ test("数据行少格子：补空", () => {
   assert.deepEqual(t.cells[1], ["1", "", ""]);
 });
 
-test("注释：读出列宽和底色，写回在表格上方", () => {
-  const src = `<!-- gogoga-table: {"w":[120,null,200],"bg":{"B2":"yellow"}} -->\n${BASIC}`;
+test("注释：读出列宽和底色，写回在表格下面", () => {
+  const src = `${BASIC}\n<!-- gogoga-table: {"w":[120,null,200],"bg":{"B2":"yellow"}} -->`;
   const t = load(src);
   assert.deepEqual(t.meta.w, [120, null, 200]);
   assert.deepEqual(t.meta.bg, { B2: "yellow" });
@@ -102,14 +102,22 @@ test("注释里坏掉的项丢掉，不认识的键原样保留", () => {
 });
 
 test("注释坏了：表格照常认，注释那行不算表格的一部分", () => {
-  const lines = `<!-- gogoga-table: {坏的 -->\n${BASIC}`.split("\n");
+  const lines = `${BASIC}\n<!-- gogoga-table: {坏的 -->`.split("\n");
   const [b] = findTables(lines);
-  assert.equal(b.start, 1);
-  assert.equal(b.metaLine, null);
+  assert.deepEqual([b.start, b.end, b.stop, b.metaLine], [0, 4, 4, null]);
+});
+
+test("注释里有竖线：写成 \\u007c，不会被当成表格的一行", () => {
+  const t = { ...load(BASIC), meta: { note: "a|b" } };
+  const lines = serializeTable(t);
+  assert.ok(!lines[lines.length - 1].includes("|"), lines[lines.length - 1]);
+  const [b] = findTables(lines);
+  assert.equal(b.metaLine, 4);
+  assert.deepEqual(b.meta, { note: "a|b" });
 });
 
 test("没有设置时不写注释；设置清空后注释也去掉", () => {
-  const t = load(`<!-- gogoga-table: {"bg":{"B2":"red"}} -->\n${BASIC}`);
+  const t = load(`${BASIC}\n<!-- gogoga-table: {"bg":{"B2":"red"}} -->`);
   const n = setBg(t, [{ r: 1, c: 1 }], null);
   assert.equal(write(n), BASIC);
   assert.equal(write(setWidth(load(BASIC), 1, null)), BASIC);
@@ -184,8 +192,8 @@ test("对齐、列宽写回", () => {
   let t = setAlign(load(BASIC), 0, "right");
   t = setWidth(t, 2, 33.6);
   const out = write(t).split("\n");
-  assert.equal(out[0], '<!-- gogoga-table: {"w":[null,null,40]} -->');
-  assert.equal(out[2], "| ---: | :---: | ---: |");
+  assert.equal(out[out.length - 1], '<!-- gogoga-table: {"w":[null,null,40]} -->');
+  assert.equal(out[1], "| ---: | :---: | ---: |");
 });
 
 test("新建空表", () => {
@@ -200,10 +208,15 @@ test("找表格：跳过代码块、frontmatter、引用、缩进和紧跟文字
     "    | i | j |", "    | --- | --- |", "",
     "一段文字", "| p | s |", "| --- | --- |", "",
     "## 标题", "| 真 | 表 |", "| --- | --- |", "| 1 | 2 |", "",
-    '<!-- gogoga-table: {"w":[100]} -->', "| 第二 | 张 |", "| --- | --- |",
+    "| 第二 | 张 |", "| --- | --- |", '<!-- gogoga-table: {"w":[100]} -->', "下一段",
   ];
   const found = findTables(md);
-  assert.deepEqual(found.map((b) => [b.start, b.end, b.metaLine]), [[20, 23, null], [25, 27, 24]]);
+  assert.deepEqual(found.map((b) => [b.start, b.end, b.metaLine, b.stop]), [[20, 23, null, 23], [24, 26, 26, 27]]);
+});
+
+test("别的 HTML 注释紧跟在表格下面：不算表格的行，也不当成我们的注释", () => {
+  const [b] = findTables(`${BASIC}\n<!-- 别的 | 注释 -->`.split("\n"));
+  assert.deepEqual([b.end, b.metaLine, b.stop], [4, null, 4]);
 });
 
 test("表格到空行或没有竖线的行为止", () => {

@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@codemirror/commands':
+        specifier: 6.11.1
+        version: 6.11.1
       '@codemirror/language':
         specifier: 6.11.3
         version: 6.11.3
@@ -46,6 +49,9 @@ importers:
         version: 8.72.1(eslint@9.39.5)(typescript@5.9.3)
 
 packages:
+
+  '@codemirror/commands@6.11.1':
+    resolution: {integrity: sha512-O/4hG3SC1YwcmQ0d2UVNDs+AsaNWd1iHVxbTeEBuqH+6bExAiPK3iS/BvpY6rZGURALv4ZD3sIgcCmRvw3ehBg==}
 
   '@codemirror/language@6.11.3':
     resolution: {integrity: sha512-9HBM2XnwDj7fnu0551HkGdrUrrqmYq/WC5iv6nbY2WdicXdGbhR/gfbZOH73Aqj4351alY1+aoG9rCNfiwS1RA==}
@@ -1437,6 +1443,13 @@ packages:
     engines: {node: '>=10'}
 
 snapshots:
+
+  '@codemirror/commands@6.11.1':
+    dependencies:
+      '@codemirror/language': 6.11.3
+      '@codemirror/state': 6.7.6
+      '@codemirror/view': 6.43.13
+      '@lezer/common': 1.5.5
 
   '@codemirror/language@6.11.3':
     dependencies:

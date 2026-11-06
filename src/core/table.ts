@@ -1,12 +1,12 @@
 /**
- * 表格核心：一张表在内存里的样子，和「标准 GFM 表格 + 上方一行注释」之间的互转。
+ * 表格核心：一张表在内存里的样子，和「标准 GFM 表格 + 下面一行注释」之间的互转。
  * 不依赖 Obsidian、不碰 DOM，方便单测。
  *
  * 文件里长这样：
- *   <!-- gogoga-table: {"w":[120,null,200],"bg":{"B2":"yellow"}} -->
  *   | 方案 | 月费 |
  *   | :--- | :---: |
  *   | 基础 | 10 元 |
+ *   <!-- gogoga-table: {"w":[120,null,200],"bg":{"B2":"yellow"}} -->
  * 注释里放 Markdown 写不出来的东西（列宽、底色……）；对齐用标准的冒号写法。
  * 格子坐标按 Excel：列 A、B、C……，第 1 行是表头。
  */
@@ -145,7 +145,7 @@ export function cellToSource(s: string): string {
 }
 
 /**
- * 解析表格的几行（表头、分隔行、数据行），meta 是上方注释里的设置。不是表格返回 null。
+ * 解析表格的几行（表头、分隔行、数据行），meta 是下面注释里的设置。不是表格返回 null。
  * 数据行比表头多出来的格子不丢：整张表按最宽的那行补齐，多出来的列表头是空的
  */
 export function parseTable(lines: readonly string[], meta: TableMeta | null = null): Table | null {
@@ -230,11 +230,12 @@ export function metaToWrite(meta: TableMeta, cols: number): TableMeta | null {
   return Object.keys(out).length ? out : null;
 }
 
+/** 注释行。竖线写成 \u007c：注释紧跟在表格下面，带竖线的话可能被当成表格的一行 */
 export function metaLine(meta: TableMeta): string {
-  return `<!-- ${META_PREFIX} ${JSON.stringify(meta)} -->`;
+  return `<!-- ${META_PREFIX} ${JSON.stringify(meta).replace(/\|/g, "\\u007c")} -->`;
 }
 
-/** 写回成几行：有设置时第一行是注释，后面是表格 */
+/** 写回成几行：表格，有设置时最后一行是注释 */
 export function serializeTable(t: Table): string[] {
   const cols = t.align.length;
   const src = t.cells.map((row) => row.map(cellToSource));
@@ -253,11 +254,11 @@ export function serializeTable(t: Table): string[] {
     return t.style.outerPipes ? `|${inner}|` : inner.trim() === "" ? inner : inner.replace(/^ /, "").replace(/ $/, "");
   };
   const out: string[] = [];
-  const meta = metaToWrite(t.meta, cols);
-  if (meta) out.push(metaLine(meta));
   out.push(line(src[0].map(pad)));
   out.push(line(t.align.map((a, c) => delimCell(a, widths[c]))));
   for (const row of src.slice(1)) out.push(line(row.map(pad)));
+  const meta = metaToWrite(t.meta, cols);
+  if (meta) out.push(metaLine(meta));
   return out;
 }
 
