@@ -14,7 +14,7 @@
  */
 
 import { type Align, CELL_COLORS, type CellColor, isDelimiterRow, parseTable, type Rect, type Table, TABLE_DENSITIES, TABLE_STYLES, type TableDensity, type TableStyle } from "../core/table";
-import { alignAll, autoWidthAll, bgOf, clearAllBg, clearCells, fillRange, setTableLook, type FillDir, isCovered, colCount, deleteCol, deleteRow, insertCol, insertRow, mergeAt, mergeCells, merges, moveCol, moveRow, pasteGrid, rowCount, setAlign, setBg, setCell, setWidth, unmergeAt, widthOf } from "../core/ops";
+import { alignAll, autoWidthAll, bgOf, editCell, mergedText, shownText, clearAllBg, clearCells, fillRange, setTableLook, type FillDir, isCovered, colCount, deleteCol, deleteRow, insertCol, insertRow, mergeAt, mergeCells, merges, moveCol, moveRow, pasteGrid, rowCount, setAlign, setBg, setCell, setWidth, unmergeAt, widthOf } from "../core/ops";
 import { fromTSV, toHTML, toTSV } from "../core/clipboard";
 import { t } from "./i18n";
 
@@ -269,7 +269,7 @@ export class TableEditor {
         if (bg) cell.dataset.bg = bg;
         const content = cell.appendChild(doc.createElement("div"));
         content.className = "ggt-content";
-        this.fill(content, tb.cells[r][c]);
+        this.fill(content, m ? mergedText(tb, m) : tb.cells[r][c]);
       }
     }
     this.markSel();
@@ -432,7 +432,7 @@ export class TableEditor {
     cell.classList.add("is-editing");
     this.fillHandle.classList.remove("is-shown");
     if (keep) {
-      this.input.value = this.table.cells[this.sel.r][this.sel.c];
+      this.input.value = shownText(this.table, this.sel.r, this.sel.c);
       const end = this.input.value.length;
       this.input.setSelectionRange(end, end);
     }
@@ -455,7 +455,7 @@ export class TableEditor {
   /** 编辑结束：内容区换回渲染好的样子 */
   private restoreContent(p: Pos): void {
     const content = this.cellEl(p)?.querySelector<HTMLElement>(".ggt-content");
-    if (content) this.fill(content, this.table.cells[p.r][p.c]);
+    if (content) this.fill(content, shownText(this.table, p.r, p.c));
   }
 
   /** 编辑完：内容变了就交给宿主 */
@@ -466,7 +466,7 @@ export class TableEditor {
     this.cellEl(p)?.classList.remove("is-editing");
     const text = this.input.value.replace(/\r\n?/g, "\n");
     this.input.value = "";
-    const next = setCell(this.table, p.r, p.c, text.replace(/^\s+|\s+$/g, ""));
+    const next = editCell(this.table, p.r, p.c, text.replace(/^\s+|\s+$/g, ""));
     const pending = this.pending;
     this.pending = null;
     if (next !== this.table) {
@@ -900,7 +900,7 @@ export class TableEditor {
     for (let i = r.r1; i <= r.r2; i++) {
       const row: string[] = [];
       // 被合并盖住的格子按看到的样子复制成空的
-      for (let j = r.c1; j <= r.c2; j++) row.push(isCovered(this.table, i, j) ? "" : this.table.cells[i][j]);
+      for (let j = r.c1; j <= r.c2; j++) row.push(isCovered(this.table, i, j) ? "" : shownText(this.table, i, j));
       grid.push(row);
     }
     return grid;

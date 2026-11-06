@@ -359,3 +359,36 @@ export function autoWidthAll(t: Table): Table {
   delete n.meta.w;
   return n;
 }
+
+/**
+ * 合并格看到的内容：区域里各格不空的内容按顺序排、每格一行，一样的只留一个
+ * （几行「Q1」合并成一格还是「Q1」）
+ */
+export function mergedText(t: Table, m: Rect): string {
+  const seen: string[] = [];
+  for (let r = m.r1; r <= m.r2; r++)
+    for (let c = m.c1; c <= m.c2; c++) {
+      const v = t.cells[r]?.[c] ?? "";
+      if (v.trim() && !seen.includes(v)) seen.push(v);
+    }
+  return seen.join("\n");
+}
+
+/** 一格（或合并格）看到的内容 */
+export function shownText(t: Table, r: number, c: number): string {
+  const m = mergeAt(t, r, c);
+  return m ? mergedText(t, m) : (t.cells[r]?.[c] ?? "");
+}
+
+/**
+ * 改一格的文字。改的是合并格时：没改（和看到的一样）就不动；改了就写进左上角、其余格子清空（内容已经合成一段）
+ */
+export function editCell(t: Table, r: number, c: number, text: string): Table {
+  const m = mergeAt(t, r, c);
+  if (!m) return setCell(t, r, c, text);
+  if (text === mergedText(t, m)) return t;
+  const n = cloneTable(t);
+  for (let i = m.r1; i <= m.r2; i++) for (let j = m.c1; j <= m.c2; j++) n.cells[i][j] = "";
+  n.cells[m.r1][m.c1] = text;
+  return n;
+}

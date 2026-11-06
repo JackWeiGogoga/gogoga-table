@@ -119,3 +119,23 @@ test("merges 只认表格范围里的", () => {
   const t = { ...load(), meta: { merge: ["A2:B2", "C5:D9"] } };
   assert.deepEqual(merges(t).map(rangeRef), ["A2:B2"]);
 });
+
+import { editCell, mergedText, shownText } from "../../src/core/ops";
+
+test("合并格看到的内容：各格按顺序、每格一行，一样的只留一个", () => {
+  const t = mergeCells(load(), R("A2:B2"));
+  assert.equal(shownText(t, 1, 0), "a1\nb1");
+  const same = mergeCells(load("| Q | x |\n| --- | --- |\n| Q1 | 1 |\n| Q1 | 2 |"), R("A2:A3"));
+  assert.equal(mergedText(same, R("A2:A3")), "Q1");
+  assert.equal(shownText(load(), 1, 0), "a1");
+});
+
+test("改合并格：没改不动；改了写进左上角，其余清空，取消合并后内容留在左上角", () => {
+  const t = mergeCells(load(), R("A2:B2"));
+  assert.equal(editCell(t, 1, 0, "a1\nb1"), t);
+  const e = editCell(t, 1, 0, "合计");
+  assert.deepEqual(e.cells[1].slice(0, 2), ["合计", ""]);
+  assert.deepEqual(unmergeAt(e, 1, 0).cells[1].slice(0, 2), ["合计", ""]);
+  // 没改过：取消合并原样回来
+  assert.deepEqual(unmergeAt(t, 1, 0).cells[1].slice(0, 2), ["a1", "b1"]);
+});
