@@ -225,8 +225,8 @@ export function mergeAt(t: Table, r: number, c: number): Rect | null {
 const overlaps = (a: Rect, b: Rect) => a.r1 <= b.r2 && b.r1 <= a.r2 && a.c1 <= b.c2 && b.c1 <= a.c2;
 
 /**
- * 合并一片格子：碰到的已有合并区域整块并进来（区域跟着扩大）；各格不空的内容按行依次接到左上角，用换行隔开，
- * 其余格子清空，不丢字。只有一格时不动
+ * 合并一片格子：碰到的已有合并区域整块并进来（区域跟着扩大）。各格的内容都不动：合并后显示左上角那格，
+ * 其余格子的内容原样留在文件里（被盖住、不显示），取消合并就原样回来；没装插件看到的还是原来的表格。只有一格时不动
  */
 export function mergeCells(t: Table, rect: Rect): Table {
   let r = { ...rect };
@@ -242,18 +242,17 @@ export function mergeCells(t: Table, rect: Rect): Table {
   r = { r1: Math.max(0, r.r1), c1: Math.max(0, r.c1), r2: Math.min(rowCount(t) - 1, r.r2), c2: Math.min(colCount(t) - 1, r.c2) };
   if (r.r1 === r.r2 && r.c1 === r.c2) return t;
   const n = cloneTable(t);
-  const texts: string[] = [];
-  for (let i = r.r1; i <= r.r2; i++)
-    for (let j = r.c1; j <= r.c2; j++) {
-      if (n.cells[i][j].trim()) texts.push(n.cells[i][j]);
-      n.cells[i][j] = "";
-    }
-  n.cells[r.r1][r.c1] = texts.join("\n");
   n.meta.merge = [...merges(t).filter((m) => !overlaps(m, r)).map(rangeRef), rangeRef(r)];
   return n;
 }
 
-/** 取消 (r, c) 所在的合并：内容留在左上角 */
+/** (r, c) 是不是被合并盖住的格子（在合并区域里、但不是左上角） */
+export function isCovered(t: Table, r: number, c: number): boolean {
+  const m = mergeAt(t, r, c);
+  return !!m && (m.r1 !== r || m.c1 !== c);
+}
+
+/** 取消 (r, c) 所在的合并：被盖住的格子重新显示出原来的内容 */
 export function unmergeAt(t: Table, r: number, c: number): Table {
   const m = mergeAt(t, r, c);
   if (!m) return t;

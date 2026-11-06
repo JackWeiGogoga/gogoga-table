@@ -14,7 +14,7 @@
  */
 
 import { type Align, CELL_COLORS, type CellColor, isDelimiterRow, parseTable, type Rect, type Table } from "../core/table";
-import { bgOf, clearCells, colCount, deleteCol, deleteRow, insertCol, insertRow, mergeAt, mergeCells, merges, moveCol, moveRow, pasteGrid, rowCount, setAlign, setBg, setCell, setWidth, unmergeAt, widthOf } from "../core/ops";
+import { bgOf, clearCells, isCovered, colCount, deleteCol, deleteRow, insertCol, insertRow, mergeAt, mergeCells, merges, moveCol, moveRow, pasteGrid, rowCount, setAlign, setBg, setCell, setWidth, unmergeAt, widthOf } from "../core/ops";
 import { fromTSV, toHTML, toTSV } from "../core/clipboard";
 import { t } from "./i18n";
 
@@ -61,6 +61,10 @@ export class TableEditor {
   private readonly tableEl: HTMLTableElement;
   private readonly input: HTMLTextAreaElement;
   private readonly rowHandle: HTMLElement;
+  /** 选了一片时框住整片的蓝框（放在滚动容器里，横向滚动时跟着表格走） */
+  private readonly rangeBox: HTMLElement;
+  /** 调列宽的线：鼠标靠近任意两列之间的竖线（哪一行都行）时出现，贯穿整张表 */
+  private readonly resizeBar: HTMLElement;
   private readonly colHandle: HTMLElement;
   private sel: Pos | null = null;
   /** 多格选区的另一头（拖选、Shift）；null 是只选了一格 */
@@ -89,11 +93,16 @@ export class TableEditor {
     this.scroller.className = "ggt-scroll";
     this.tableEl = this.scroller.appendChild(doc.createElement("table"));
     this.tableEl.className = "ggt-table";
+    this.rangeBox = this.scroller.appendChild(doc.createElement("div"));
+    this.rangeBox.className = "ggt-range-box";
     this.input = doc.createElement("textarea");
     this.input.className = "ggt-input";
     this.input.rows = 1;
     this.input.spellcheck = false;
     this.input.setAttribute("autocapitalize", "off");
+    this.resizeBar = this.root.appendChild(doc.createElement("div"));
+    this.resizeBar.className = "ggt-resize";
+    this.resizeBar.setAttribute("aria-label", t("resize"));
     this.rowHandle = this.handle("ggt-row-handle", t("rowMenu"), "grip-vertical");
     this.colHandle = this.handle("ggt-col-handle", t("colMenu"), "grip-horizontal");
     this.addButton("ggt-add-col", t("addCol"), () => this.apply(insertCol(this.table, colCount(this.table)), { r: this.sel?.r ?? 0, c: colCount(this.table) }));
@@ -235,17 +244,13 @@ export class TableEditor {
         const content = cell.appendChild(doc.createElement("div"));
         content.className = "ggt-content";
         this.fill(content, tb.cells[r][c]);
-        if (r === 0 && !this.host.readonly) {
-          const h = cell.appendChild(doc.createElement("span"));
-          h.className = "ggt-resize";
-          h.dataset.c = String(c);
-          h.setAttribute("aria-label", t("resize"));
-        }
       }
     }
     this.markSel();
     if (hadFocus && this.sel) this.input.focus({ preventScroll: true });
     this.stickHeader();
+    // 列宽变了，线的位置就不对了：先收起来，鼠标再动时按新的边线放
+    if (!this.resize) this.resizeBar.classList.remove("is-shown", "is-active");
   }
 
   private fill(el: HTMLElement, md: string): void {
@@ -309,14 +314,28 @@ export class TableEditor {
   private markSel(): void {
     for (const el of Array.from(this.tableEl.querySelectorAll(".is-selected, .is-sel-head, .is-in-range"))) el.classList.remove("is-selected", "is-sel-head", "is-in-range");
     this.root.classList.toggle("has-range", this.isMulti());
+    this.rangeBox.classList.remove("is-shown");
     if (this.isMulti()) {
       const r = this.rangeRect();
-      if (r)
+      if (r) {
+        // 整片的外框：选区里所有格子的外接矩形
+        let box: { l: number; t: number; r: number; b: number } | null = null;
         for (const el of Array.from(this.tableEl.querySelectorAll<HTMLElement>(".ggt-cell"))) {
           const er = Number(el.dataset.r);
           const ec = Number(el.dataset.c);
-          if (er >= r.r1 && er <= r.r2 && ec >= r.c1 && ec <= r.c2) el.classList.add("is-in-range");
+          if (er < r.r1 || er > r.r2 || ec < r.c1 || ec > r.c2) continue;
+          el.classList.add("is-in-range");
+          const b = el.getBoundingClientRect();
+          box = box ? { l: Math.min(box.l, b.left), t: Math.min(box.t, b.top), r: Math.max(box.r, b.right), b: Math.max(box.b, b.bottom) } : { l: b.left, t: b.top, r: b.right, b: b.bottom };
         }
+        if (box) {
+          const base = this.scroller.getBoundingClientRect();
+          const x = box.l - base.left + this.scroller.scrollLeft;
+          const y = box.t - base.top + this.scroller.scrollTop;
+          this.rangeBox.setAttribute("style", `left:${x}px;top:${y}px;width:${box.r - box.l}px;height:${box.b - box.t}px`);
+          this.rangeBox.classList.add("is-shown");
+        }
+      }
     }
     const cell = this.sel && this.cellEl(this.sel);
     if (!cell || !this.sel) {
@@ -498,7 +517,6 @@ export class TableEditor {
     const doc = this.root.ownerDocument;
     this.on(this.tableEl, "pointerdown", (ev) => {
       const target = ev.target as HTMLElement;
-      if (target.closest(".ggt-resize")) return this.startResize(ev, target);
       if (target === this.input) return;
       const cell = target.closest<HTMLElement>(".ggt-cell");
       if (!cell || this.host.readonly) return;
@@ -518,11 +536,6 @@ export class TableEditor {
     });
     this.on(this.tableEl, "dblclick", (ev) => {
       const target = ev.target as HTMLElement;
-      const rz = target.closest<HTMLElement>(".ggt-resize");
-      if (rz) {
-        this.apply(setWidth(this.table, Number(rz.dataset.c), null));
-        return;
-      }
       if (target.closest(".ggt-cell") && !this.editing) this.startEdit(true);
     });
     this.on(this.tableEl, "contextmenu", (ev) => {
@@ -540,7 +553,14 @@ export class TableEditor {
       else this.input.focus({ preventScroll: true });
       this.openMenu(this.cellMenu(inRange && this.sel ? this.sel : p), ev.clientX, ev.clientY);
     });
+    this.on(this.resizeBar, "pointerdown", (ev) => this.startResize(ev, this.resizeBar));
+    this.on(this.resizeBar, "dblclick", (ev) => {
+      ev.preventDefault();
+      const c = Number(this.resizeBar.dataset.c);
+      if (!Number.isNaN(c)) this.apply(setWidth(this.table, c, null));
+    });
     this.on(this.root, "pointermove", (ev) => {
+      if (!this.resize && ev.pointerType !== "touch" && !this.host.readonly) this.placeResizeBar(ev.clientX, ev.clientY);
       if (this.resize || ev.pointerType === "touch" || this.root.classList.contains("is-dragging")) return;
       const cell = (ev.target as HTMLElement).closest<HTMLElement>(".ggt-cell");
       if (!cell || !this.tableEl.contains(cell)) return;
@@ -551,6 +571,7 @@ export class TableEditor {
       }
     });
     this.on(this.root, "pointerleave", () => {
+      if (!this.resize) this.resizeBar.classList.remove("is-shown");
       if (this.popover) return;
       this.hover = null;
       this.placeHandles();
@@ -665,6 +686,11 @@ export class TableEditor {
         return;
       case "Escape":
         stop();
+        // 菜单开着：先关菜单，选区不动
+        if (this.popover) {
+          this.closePopover();
+          return;
+        }
         // 选了一片：先收回成一格
         if (this.isMulti() && this.sel) {
           this.setSel(this.sel, true);
@@ -682,20 +708,23 @@ export class TableEditor {
   private dragSelect(ev: PointerEvent): void {
     const doc = this.root.ownerDocument;
     const move = (e: PointerEvent) => {
+      // 键已经松开了（松开事件被别处拦掉也一样）：结束拖选
+      if (!(e.buttons & 1)) return up();
       if (this.editing) return;
       const el = doc.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>(".ggt-cell");
       if (!el || !this.tableEl.contains(el)) return;
       const p = { r: Number(el.dataset.r), c: Number(el.dataset.c) };
       if (this.sel && (p.r !== this.sel.r || p.c !== this.sel.c)) this.setSel(p, true, true);
     };
+    // 在捕获阶段收：实时预览里表格外层拦着冒泡（不让 Obsidian 碰到我们的格子），冒泡阶段收不到松开
     const up = () => {
-      doc.removeEventListener("pointermove", move);
-      doc.removeEventListener("pointerup", up);
-      doc.removeEventListener("pointercancel", up);
+      doc.removeEventListener("pointermove", move, true);
+      doc.removeEventListener("pointerup", up, true);
+      doc.removeEventListener("pointercancel", up, true);
     };
-    doc.addEventListener("pointermove", move);
-    doc.addEventListener("pointerup", up);
-    doc.addEventListener("pointercancel", up);
+    doc.addEventListener("pointermove", move, true);
+    doc.addEventListener("pointerup", up, true);
+    doc.addEventListener("pointercancel", up, true);
     void ev;
   }
 
@@ -708,7 +737,8 @@ export class TableEditor {
     const grid: string[][] = [];
     for (let i = r.r1; i <= r.r2; i++) {
       const row: string[] = [];
-      for (let j = r.c1; j <= r.c2; j++) row.push(this.table.cells[i][j]);
+      // 被合并盖住的格子按看到的样子复制成空的
+      for (let j = r.c1; j <= r.c2; j++) row.push(isCovered(this.table, i, j) ? "" : this.table.cells[i][j]);
       grid.push(row);
     }
     return grid;
@@ -789,15 +819,49 @@ export class TableEditor {
 
   // ---------- 列宽 ----------
 
+  /** 指针离哪条列边线（每列的右边）不到 4 像素，就把调列宽的线放到那里；不在附近就藏起来 */
+  private placeResizeBar(x: number, y: number): void {
+    const bar = this.resizeBar;
+    const t = this.tableEl.getBoundingClientRect();
+    let hit = -1;
+    let at = 0;
+    if (y >= t.top && y <= t.bottom && !this.root.classList.contains("is-dragging")) {
+      // 指针所在的格子：合并格跨了几列，它里面的列分界线不能拖（点在合并格中间是点格子）
+      const under = Array.from(this.tableEl.querySelectorAll<HTMLTableCellElement>(".ggt-cell")).find((el) => {
+        const b = el.getBoundingClientRect();
+        return x >= b.left - 4 && x <= b.right + 4 && y >= b.top && y <= b.bottom && el.colSpan > 1;
+      });
+      const c1 = under ? Number(under.dataset.c) : -1;
+      const c2 = under ? c1 + under.colSpan - 1 : -1;
+      const cols = Array.from(this.tableEl.querySelectorAll("col"));
+      cols.forEach((col, c) => {
+        if (c >= c1 && c < c2) return;
+        const right = col.getBoundingClientRect().right;
+        if (hit < 0 && Math.abs(x - right) <= 4) {
+          hit = c;
+          at = right;
+        }
+      });
+    }
+    if (hit < 0) {
+      bar.classList.remove("is-shown");
+      return;
+    }
+    const base = this.root.getBoundingClientRect();
+    bar.dataset.c = String(hit);
+    bar.setAttribute("style", `left:${at - base.left - 4}px;top:${t.top - base.top}px;height:${t.height}px`);
+    bar.classList.add("is-shown");
+  }
+
   private startResize(ev: PointerEvent, handle: HTMLElement): void {
     if (this.host.readonly) return;
     ev.preventDefault();
     ev.stopPropagation();
     const c = Number(handle.dataset.c);
     const col = this.tableEl.querySelectorAll("col")[c];
-    const cell = this.cellEl({ r: 0, c });
-    if (!col || !cell) return;
-    this.resize = { c, startX: ev.clientX, startW: cell.getBoundingClientRect().width, col };
+    if (!col || Number.isNaN(c)) return;
+    this.resize = { c, startX: ev.clientX, startW: col.getBoundingClientRect().width, col };
+    const startLeft = parseFloat(handle.style.left) || 0;
     handle.classList.add("is-active");
     this.root.classList.add("is-resizing");
     try {
@@ -808,7 +872,12 @@ export class TableEditor {
     const move = (e: PointerEvent) => {
       const r = this.resize;
       if (!r) return;
-      r.col.style.width = `${Math.max(40, Math.round(r.startW + e.clientX - r.startX))}px`;
+      const w = Math.max(40, Math.round(r.startW + e.clientX - r.startX));
+      r.col.style.width = `${w}px`;
+      // 线跟着鼠标走
+      const tr = this.tableEl.getBoundingClientRect();
+      const base = this.root.getBoundingClientRect();
+      handle.setAttribute("style", `left:${startLeft + (w - r.startW)}px;top:${tr.top - base.top}px;height:${tr.height}px`);
       this.placeHandles();
     };
     const up = () => {
@@ -889,7 +958,10 @@ export class TableEditor {
       const dest = slot > fromIdx ? slot - 1 : slot;
       return { index: row ? dest + 1 : dest, at: edge };
     };
+    // 表头必须在第一行：表头的行手柄拖不动，只能点开菜单
+    const fixed = row && from === 0;
     const move = (e: PointerEvent) => {
+      if (fixed) return;
       if (!dragging) {
         if (Math.hypot(e.clientX - x0, e.clientY - y0) < 5) return;
         dragging = true;
@@ -912,7 +984,14 @@ export class TableEditor {
       this.root.classList.remove("is-dragging");
       for (const c of marked()) c.classList.remove("is-drag-source");
       if (!dragging) {
-        this.setSel(p, true);
+        // 点手柄：选中整行 / 整列，再打开菜单
+        if (row) {
+          this.setSel({ r: p.r, c: 0 }, true);
+          this.setSel({ r: p.r, c: colCount(this.table) - 1 }, true, true);
+        } else {
+          this.setSel({ r: 0, c: p.c }, true);
+          this.setSel({ r: rowCount(this.table) - 1, c: p.c }, true, true);
+        }
         const rect = handle.getBoundingClientRect();
         this.openMenu(row ? this.rowMenu(p) : this.colMenu(p), rect.left, rect.bottom + 4);
         return;
@@ -960,7 +1039,7 @@ export class TableEditor {
   private placeHandles(): void {
     const p = this.hover ?? this.sel;
     const show = !!p && !this.host.readonly && !this.resize;
-    this.rowHandle.classList.toggle("is-shown", show && !!p && p.r > 0);
+    this.rowHandle.classList.toggle("is-shown", show);
     this.colHandle.classList.toggle("is-shown", show);
     if (!show || !p) return;
     const base = this.root.getBoundingClientRect();
@@ -973,6 +1052,7 @@ export class TableEditor {
     this.rowHandle.style.top = `${fr.top - base.top + fr.height / 2}px`;
     this.rowHandle.style.left = `${fr.left - base.left}px`;
     this.rowHandle.dataset.r = String(p.r);
+    this.rowHandle.classList.toggle("is-fixed", p.r === 0);
     this.rowHandle.dataset.c = String(p.c);
     this.colHandle.style.left = `${hr.left - base.left + hr.width / 2}px`;
     this.colHandle.style.top = `${hr.top - base.top}px`;

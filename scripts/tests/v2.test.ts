@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { fromTSV, toHTML, toTSV } from "../../src/core/clipboard";
 import { findTables } from "../../src/core/find";
-import { clearCells, deleteCol, deleteRow, insertCol, insertRow, mergeAt, mergeCells, merges, moveCol, moveRow, pasteGrid, setBg, unmergeAt } from "../../src/core/ops";
+import { clearCells, isCovered, deleteCol, deleteRow, insertCol, insertRow, mergeAt, mergeCells, merges, moveCol, moveRow, pasteGrid, setBg, unmergeAt } from "../../src/core/ops";
 import { parseMetaLine, parseRange, parseTable, rangeRef, serializeTable, type Table } from "../../src/core/table";
 
 const BASE = `| A | B | C |
@@ -26,27 +26,30 @@ test("合并范围的写法：A3:B4，写反了也认，一格不算", () => {
   assert.deepEqual(parseMetaLine('<!-- gogoga-table: {"merge":["A2:B2","坏的","C3:C3"]} -->'), { merge: ["A2:B2"] });
 });
 
-test("合并：内容依次接到左上角，其他格清空，写进注释", () => {
+test("合并：各格内容不动，只写进注释；显示左上角", () => {
   const t = mergeCells(load(), R("A2:B3"));
-  assert.equal(t.cells[1][0], "a1\nb1\na2\nb2");
-  assert.deepEqual([t.cells[1][1], t.cells[2][0], t.cells[2][1]], ["", "", ""]);
+  assert.deepEqual(t.cells, load().cells);
   assert.deepEqual(t.meta.merge, ["A2:B3"]);
-  assert.match(serializeTable(t).join("\n"), /\| a1<br>b1<br>a2<br>b2 \|  \| c1 \|/);
+  // 没装插件看到的表格内容一个字没变，只多了一行注释
+  assert.equal(serializeTable(t).slice(0, -1).join("\n"), BASE);
   assert.deepEqual(mergeAt(t, 2, 1), R("A2:B3"));
   assert.equal(mergeAt(t, 3, 0), null);
+  assert.equal(isCovered(t, 1, 0), false);
+  assert.equal(isCovered(t, 2, 1), true);
+});
+
+test("合并后取消合并：内容原样回来（横向、纵向都一样）", () => {
+  for (const range of ["A2:B2", "A2:A3", "B2:C4"]) {
+    const t = unmergeAt(mergeCells(load(), R(range)), R(range).r1, R(range).c1);
+    assert.deepEqual(t.cells, load().cells, range);
+    assert.equal(serializeTable(t).join("\n"), BASE, range);
+  }
 });
 
 test("合并碰到已有的合并区域：整块并进来", () => {
   let t = mergeCells(load(), R("B2:C2"));
   t = mergeCells(t, R("A2:B3"));
   assert.deepEqual(t.meta.merge, ["A2:C3"]);
-});
-
-test("取消合并：内容留在左上角", () => {
-  const t = unmergeAt(mergeCells(load(), R("A2:B2")), 1, 1);
-  assert.deepEqual(t.meta.merge, []);
-  assert.equal(t.cells[1][0], "a1\nb1");
-  assert.equal(serializeTable(t).join("\n").includes("gogoga-table"), false);
 });
 
 test("在合并区域中间插行插列：区域变大；在上面插：整体下移", () => {
