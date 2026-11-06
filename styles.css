@@ -94,13 +94,11 @@
   border-radius: 0 !important;
   overflow: hidden;
 }
-.ggt-cell.is-editing .ggt-content { display: none; }
+/* 编辑中：内容区换成看不见的原文撑开高度，编辑框盖在上面 */
+.ggt-cell.is-editing .ggt-content { visibility: hidden; white-space: pre-wrap; }
 .ggt-cell.is-editing .ggt-input {
-  position: static;
-  display: block;
   opacity: 1;
   pointer-events: auto;
-  min-height: calc(1.5em + 2 * var(--ggt-pad-y));
   caret-color: var(--ggt-sel);
 }
 

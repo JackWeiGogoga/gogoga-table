@@ -52,7 +52,6 @@ export function sameTable(a: Table, b: Table): boolean {
   return JSON.stringify([a.cells, a.align, a.meta]) === JSON.stringify([b.cells, b.align, b.meta]);
 }
 
-const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
 export class TableEditor {
   readonly root: HTMLElement;
@@ -70,6 +69,8 @@ export class TableEditor {
   private popover: HTMLElement | null = null;
   private resize: { c: number; startX: number; startW: number; col: HTMLElement } | null = null;
   private destroyed = false;
+  /** 上一次长按开菜单的时间（安卓随后还会来一次右键事件，忽略掉） */
+  private longPressAt = -Infinity;
   private readonly cleanups: (() => void)[] = [];
 
   constructor(
@@ -241,9 +242,21 @@ export class TableEditor {
     this.host.onFocus?.();
   }
 
+  /**
+   * 编辑框跟着内容长高：格子里的内容区换成编辑框里的原文（看不见），编辑框盖在上面，
+   * 格子按这段原文的高度排版，不用量高度、设内联样式
+   */
   private autosize(): void {
-    this.input.style.height = "auto";
-    this.input.style.height = `${this.input.scrollHeight}px`;
+    const content = this.sel && this.cellEl(this.sel)?.querySelector<HTMLElement>(".ggt-content");
+    if (!content) return;
+    content.classList.remove("is-empty");
+    content.textContent = this.input.value + "\u200b";
+  }
+
+  /** 编辑结束：内容区换回渲染好的样子 */
+  private restoreContent(p: Pos): void {
+    const content = this.cellEl(p)?.querySelector<HTMLElement>(".ggt-content");
+    if (content) this.fill(content, this.table.cells[p.r][p.c]);
   }
 
   /** 编辑完：内容变了就交给宿主 */
@@ -254,20 +267,18 @@ export class TableEditor {
     this.cellEl(p)?.classList.remove("is-editing");
     const text = this.input.value.replace(/\r\n?/g, "\n");
     this.input.value = "";
-    this.input.style.height = "";
     const next = setCell(this.table, p.r, p.c, text.replace(/^\s+|\s+$/g, ""));
     const pending = this.pending;
     this.pending = null;
     if (next !== this.table) {
       const prev = this.table;
       this.table = next;
-      const content = this.cellEl(p)?.querySelector<HTMLElement>(".ggt-content");
-      if (content) this.fill(content, next.cells[p.r][p.c]);
+      this.restoreContent(p);
       this.host.onChange(next, prev);
     } else if (pending) {
       this.table = pending;
       this.render();
-    }
+    } else this.restoreContent(p);
   }
 
   private cancel(): void {
@@ -275,12 +286,11 @@ export class TableEditor {
     this.editing = false;
     this.cellEl(this.sel)?.classList.remove("is-editing");
     this.input.value = "";
-    this.input.style.height = "";
     if (this.pending) {
       this.table = this.pending;
       this.pending = null;
       this.render();
-    }
+    } else this.restoreContent(this.sel);
   }
 
   /** 换一张表并交给宿主，选中挪到 sel */
@@ -344,12 +354,11 @@ export class TableEditor {
       if (!cell || this.host.readonly) return;
       // 点链接、标签：照常打开，不选中
       if (target.closest("a, .tag, input[type=checkbox]")) return;
-      ev.preventDefault();
       const p = { r: Number(cell.dataset.r), c: Number(cell.dataset.c) };
+      if (ev.pointerType === "touch") return this.touchStart(ev, p);
+      ev.preventDefault();
       const same = this.sel && this.sel.r === p.r && this.sel.c === p.c;
       if (!same || !this.editing) this.setSel(p, true);
-      // 手机上点一下就编辑（不然键盘弹不出来）
-      if (ev.pointerType === "touch" && !this.editing) this.startEdit(true);
     });
     this.on(this.tableEl, "dblclick", (ev) => {
       const target = ev.target as HTMLElement;
@@ -365,6 +374,8 @@ export class TableEditor {
       if (!cell || this.host.readonly || (this.editing && ev.target === this.input)) return;
       ev.preventDefault();
       ev.stopPropagation();
+      // 安卓长按会再来一次右键事件：长按已经开过菜单了
+      if (performance.now() - this.longPressAt < 1000) return;
       const p = { r: Number(cell.dataset.r), c: Number(cell.dataset.c) };
       this.setSel(p, true);
       this.openMenu(this.cellMenu(p), ev.clientX, ev.clientY);
@@ -416,7 +427,8 @@ export class TableEditor {
 
   private onKey(ev: KeyboardEvent): void {
     if (ev.isComposing || ev.keyCode === 229) return;
-    const mod = isMac ? ev.metaKey : ev.ctrlKey;
+    // ⌘ 或 Ctrl 都算（不去判断平台）：Mac 上 Ctrl+Z 本来也没有别的用处
+    const mod = ev.metaKey || ev.ctrlKey;
     if (this.editing) {
       if (ev.key === "Enter" && !ev.shiftKey && !ev.altKey && !mod) {
         ev.preventDefault();
@@ -446,7 +458,7 @@ export class TableEditor {
       else this.host.undo?.();
       return;
     }
-    if (mod && key.toLowerCase() === "y" && !isMac) {
+    if (mod && key.toLowerCase() === "y") {
       stop();
       this.host.redo?.();
       return;
@@ -488,6 +500,46 @@ export class TableEditor {
     }
     // 其他键（打字）：落到输入框里，input 事件里开始编辑
     ev.stopPropagation();
+  }
+
+  // ---------- 触屏 ----------
+
+  /**
+   * 手指按在格子上：轻点是选中并进入编辑（键盘弹出来），按住不动半秒是菜单，滑动是滚动（什么都不做）。
+   * 不在按下时 preventDefault，滚动照常
+   */
+  private touchStart(ev: PointerEvent, p: Pos): void {
+    const x0 = ev.clientX;
+    const y0 = ev.clientY;
+    let moved = false;
+    let pressed = false;
+    const timer = window.setTimeout(() => {
+      if (moved) return;
+      pressed = true;
+      this.longPressAt = performance.now();
+      this.setSel(p, false);
+      this.openMenu(this.cellMenu(p), x0, y0);
+    }, 500);
+    const move = (e: PointerEvent) => {
+      if (Math.hypot(e.clientX - x0, e.clientY - y0) > 8) {
+        moved = true;
+        window.clearTimeout(timer);
+      }
+    };
+    const end = (e: PointerEvent) => {
+      window.clearTimeout(timer);
+      this.tableEl.removeEventListener("pointermove", move);
+      this.tableEl.removeEventListener("pointerup", end);
+      this.tableEl.removeEventListener("pointercancel", end);
+      if (moved || pressed || e.type === "pointercancel") return;
+      const same = this.sel && this.sel.r === p.r && this.sel.c === p.c;
+      if (same && this.editing) return;
+      this.setSel(p, true);
+      this.startEdit(true);
+    };
+    this.tableEl.addEventListener("pointermove", move);
+    this.tableEl.addEventListener("pointerup", end);
+    this.tableEl.addEventListener("pointercancel", end);
   }
 
   // ---------- 列宽 ----------
