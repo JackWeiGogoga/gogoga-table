@@ -1,0 +1,33 @@
+{
+  "name": "gogoga-table",
+  "version": "0.1.0",
+  "description": "飞书 / Notion 式的 Obsidian 表格：好看、好用，文件仍是标准 Markdown 表格。",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc --noEmit && node esbuild.config.mjs production",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/run-tests.mjs",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@codemirror/language": "6.11.3",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.13",
+    "@eslint/js": "^9.39.5",
+    "@eslint/json": "0.14.0",
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.24.0",
+    "eslint": "^9.39.5",
+    "eslint-plugin-obsidianmd": "0.4.2",
+    "obsidian": "^1.14.4",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.71.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}
