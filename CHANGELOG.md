@@ -9,6 +9,7 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ### Fixed
 - Giving header cells a background (click the header row's handle → **Background**, or select header cells) had no effect: the header's default light gray covered it, also with the Minimal and Three-line styles and while the header was stuck to the top. Header colors now show, sticky header included.
+- After scrolling a wide table sideways, the row handle and the table button in the top-left corner scrolled out of sight with it. They now stay at the visible left edge, and hide when their row or column is scrolled out.
 
 ## [0.1.0] - 2026-11-06
 
