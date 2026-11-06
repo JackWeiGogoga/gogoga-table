@@ -199,6 +199,22 @@ export class TableEditor {
     this.setSel({ r, c }, true);
   }
 
+  /**
+   * 正在编辑的这一格按输入框里现在的文字算出来的表，不结束编辑；没在编辑或没改返回 null。
+   * 宿主自动保存前用（脑图视图存盘前要带上正在输入的文字）
+   */
+  draft(): Table | null {
+    if (!this.editing || !this.sel) return null;
+    const text = this.input.value.replace(/\r\n?/g, "\n").replace(/^\s+|\s+$/g, "");
+    const edited = editCell(this.table, this.sel.r, this.sel.c, text);
+    return edited === this.table ? null : normalize(edited);
+  }
+
+  /** 结束编辑并把输入的内容交给宿主（宿主关掉、换文档、切只读之前调） */
+  flush(): void {
+    if (this.editing) this.commit();
+  }
+
   isEditing(): boolean {
     return this.editing;
   }
@@ -340,6 +356,17 @@ export class TableEditor {
 
   private outer: HTMLElement | null = null;
 
+  /**
+   * 编辑器被整体缩放了多少（脑图画布用 transform: scale 缩放，getBoundingClientRect 量到的是屏幕像素）。
+   * 屏幕上量出来的距离要除以它，才是写进 style 的 CSS 像素
+   */
+  private scale(): number {
+    const w = this.root.offsetWidth;
+    if (!w) return 1;
+    const k = this.root.getBoundingClientRect().width / w;
+    return k > 0 && Number.isFinite(k) ? k : 1;
+  }
+
   private stickHeader(): void {
     const head = this.tableEl.tHead;
     if (!head) return;
@@ -354,7 +381,7 @@ export class TableEditor {
     }
     const stuck = offset > 0;
     this.root.classList.toggle("is-stuck", stuck);
-    if (stuck) head.setAttribute("style", `transform: translateY(${Math.round(offset)}px)`);
+    if (stuck) head.setAttribute("style", `transform: translateY(${Math.round(offset / this.scale())}px)`);
     else head.removeAttribute("style");
   }
 
@@ -524,7 +551,8 @@ export class TableEditor {
     const right = this.lineBox(r.c2, false);
     if (bottom.b > top.a && right.b > left.a) {
       const base = this.scroller.getBoundingClientRect();
-      return { x: left.a - base.left + this.scroller.scrollLeft, y: top.a - base.top + this.scroller.scrollTop, w: right.b - left.a, h: bottom.b - top.a };
+      const k = this.scale();
+      return { x: (left.a - base.left) / k + this.scroller.scrollLeft, y: (top.a - base.top) / k + this.scroller.scrollTop, w: (right.b - left.a) / k, h: (bottom.b - top.a) / k };
     }
     let box: { l: number; t: number; r: number; b: number } | null = null;
     for (const el of Array.from(this.tableEl.querySelectorAll<HTMLElement>(".ggt-cell"))) {
@@ -536,7 +564,8 @@ export class TableEditor {
     }
     if (!box) return null;
     const base = this.scroller.getBoundingClientRect();
-    return { x: box.l - base.left + this.scroller.scrollLeft, y: box.t - base.top + this.scroller.scrollTop, w: box.r - box.l, h: box.b - box.t };
+    const k = this.scale();
+    return { x: (box.l - base.left) / k + this.scroller.scrollLeft, y: (box.t - base.top) / k + this.scroller.scrollTop, w: (box.r - box.l) / k, h: (box.b - box.t) / k };
   }
 
   /** 填充柄放在选区右下角；没选中、在编辑、只读时不显示 */
@@ -1279,7 +1308,8 @@ export class TableEditor {
     const left = ext(cols, Math.max(0, c1)).a;
     const right = ext(cols, c2).b;
     const base = this.scroller.getBoundingClientRect();
-    pv.setAttribute("style", `left:${left - base.left + this.scroller.scrollLeft}px;top:${top - base.top + this.scroller.scrollTop}px;width:${right - left}px;height:${bottom - top}px`);
+    const k = this.scale();
+    pv.setAttribute("style", `left:${(left - base.left) / k + this.scroller.scrollLeft}px;top:${(top - base.top) / k + this.scroller.scrollTop}px;width:${(right - left) / k}px;height:${(bottom - top) / k}px`);
     pv.classList.add("is-shown");
   }
 
@@ -1320,7 +1350,8 @@ export class TableEditor {
     const cols = Array.from(this.tableEl.querySelectorAll("col"));
     let html = '<table data-ggt="1" style="border-collapse:collapse">';
     html += "<colgroup>";
-    for (let c = rect.c1; c <= rect.c2; c++) html += `<col style="width:${Math.round(cols[c]?.getBoundingClientRect().width ?? 80)}px">`;
+    const k = this.scale();
+    for (let c = rect.c1; c <= rect.c2; c++) html += `<col style="width:${Math.round((cols[c]?.getBoundingClientRect().width ?? 80 * k) / k)}px">`;
     html += "</colgroup>";
     for (let r = rect.r1; r <= rect.r2; r++) {
       html += "<tr>";
@@ -1470,7 +1501,8 @@ export class TableEditor {
     }
     const base = this.root.getBoundingClientRect();
     bar.dataset.c = String(hit);
-    bar.setAttribute("style", `left:${at - base.left - 4}px;top:${t.top - base.top}px;height:${t.height}px`);
+    const k = this.scale();
+    bar.setAttribute("style", `left:${(at - base.left) / k - 4}px;top:${(t.top - base.top) / k}px;height:${t.height / k}px`);
     bar.classList.add("is-shown");
   }
 
@@ -1481,7 +1513,8 @@ export class TableEditor {
     const c = Number(handle.dataset.c);
     const col = this.tableEl.querySelectorAll("col")[c];
     if (!col || Number.isNaN(c)) return;
-    this.resize = { c, startX: ev.clientX, startW: col.getBoundingClientRect().width, col };
+    const k = this.scale();
+    this.resize = { c, startX: ev.clientX, startW: col.getBoundingClientRect().width / k, col };
     const startLeft = parseFloat(handle.style.left) || 0;
     handle.classList.add("is-active");
     this.root.classList.add("is-resizing");
@@ -1493,12 +1526,12 @@ export class TableEditor {
     const move = (e: PointerEvent) => {
       const r = this.resize;
       if (!r) return;
-      const w = Math.max(40, Math.round(r.startW + e.clientX - r.startX));
+      const w = Math.max(40, Math.round(r.startW + (e.clientX - r.startX) / k));
       r.col.style.width = `${w}px`;
       // 线跟着鼠标走
       const tr = this.tableEl.getBoundingClientRect();
       const base = this.root.getBoundingClientRect();
-      handle.setAttribute("style", `left:${startLeft + (w - r.startW)}px;top:${tr.top - base.top}px;height:${tr.height}px`);
+      handle.setAttribute("style", `left:${startLeft + (w - r.startW)}px;top:${(tr.top - base.top) / k}px;height:${tr.height / k}px`);
       this.placeHandles();
     };
     const up = () => {
@@ -1594,8 +1627,9 @@ export class TableEditor {
       target = index;
       const base = this.root.getBoundingClientRect();
       const t = this.tableEl.getBoundingClientRect();
-      if (row) line.setAttribute("style", `top:${at - base.top - 1}px;left:${t.left - base.left}px;width:${t.width}px`);
-      else line.setAttribute("style", `left:${at - base.left - 1}px;top:${t.top - base.top}px;height:${t.height}px`);
+      const k = this.scale();
+      if (row) line.setAttribute("style", `top:${(at - base.top) / k - 1}px;left:${(t.left - base.left) / k}px;width:${t.width / k}px`);
+      else line.setAttribute("style", `left:${(at - base.left) / k - 1}px;top:${(t.top - base.top) / k}px;height:${t.height / k}px`);
     };
     const up = () => {
       handle.removeEventListener("pointermove", move);
@@ -1661,7 +1695,8 @@ export class TableEditor {
     {
       const base = this.root.getBoundingClientRect();
       const tr = this.tableEl.getBoundingClientRect();
-      this.cornerBtn.setAttribute("style", `left:${tr.left - base.left}px;top:${tr.top - base.top}px`);
+      const k = this.scale();
+      this.cornerBtn.setAttribute("style", `left:${(tr.left - base.left) / k}px;top:${(tr.top - base.top) / k}px`);
     }
     const p = this.hover ?? this.sel;
     const show = !!p && !this.host.readonly && !this.resize;
@@ -1675,13 +1710,14 @@ export class TableEditor {
     if (!cell || !first || !head) return;
     const fr = first.getBoundingClientRect();
     const hr = head.getBoundingClientRect();
-    this.rowHandle.style.top = `${fr.top - base.top + fr.height / 2}px`;
-    this.rowHandle.style.left = `${fr.left - base.left}px`;
+    const k = this.scale();
+    this.rowHandle.style.top = `${(fr.top - base.top + fr.height / 2) / k}px`;
+    this.rowHandle.style.left = `${(fr.left - base.left) / k}px`;
     this.rowHandle.dataset.r = String(p.r);
     this.rowHandle.classList.toggle("is-fixed", p.r === 0);
     this.rowHandle.dataset.c = String(p.c);
-    this.colHandle.style.left = `${hr.left - base.left + hr.width / 2}px`;
-    this.colHandle.style.top = `${hr.top - base.top}px`;
+    this.colHandle.style.left = `${(hr.left - base.left + hr.width / 2) / k}px`;
+    this.colHandle.style.top = `${(hr.top - base.top) / k}px`;
     this.colHandle.dataset.r = String(p.r);
     this.colHandle.dataset.c = String(p.c);
   }
@@ -1732,7 +1768,8 @@ export class TableEditor {
 
   /** 每列现在实际的宽度 */
   private colWidths(): number[] {
-    return Array.from(this.tableEl.querySelectorAll("col")).map((c) => c.getBoundingClientRect().width);
+    const k = this.scale();
+    return Array.from(this.tableEl.querySelectorAll("col")).map((c) => c.getBoundingClientRect().width / k);
   }
 
   /** 撑满页面：按现在各列的比例放大 / 缩小到正文的可用宽度 */
