@@ -1357,6 +1357,11 @@ export class TableEditor {
             if (ps) pill.setAttribute("style", `background:${ps.backgroundColor};color:${ps.color};padding:0 8px;border-radius:10px`);
           });
           clone.querySelectorAll("textarea").forEach((x) => x.remove());
+          // Obsidian 渲染时外面包了一层 <p>：拆掉（多段的换成 <br>），粘到 Word 里不会多出段落间距
+          clone.querySelectorAll(":scope > p").forEach((para, i) => {
+            if (i > 0) para.before(clone.ownerDocument.createElement("br"));
+            para.replaceWith(...Array.from(para.childNodes));
+          });
           inner = clone.innerHTML;
         }
         const tag = r === 0 ? "th" : "td";
