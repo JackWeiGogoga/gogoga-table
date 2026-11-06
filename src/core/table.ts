@@ -17,7 +17,7 @@ export type Align = "left" | "center" | "right" | null;
 export const CELL_COLORS = ["gray", "red", "orange", "yellow", "green", "blue", "purple"] as const;
 export type CellColor = (typeof CELL_COLORS)[number];
 
-export const TABLE_STYLES = ["default", "zebra", "minimal"] as const;
+export const TABLE_STYLES = ["default", "zebra", "minimal", "academic"] as const;
 export type TableStyle = (typeof TABLE_STYLES)[number];
 export const TABLE_DENSITIES = ["comfortable", "compact"] as const;
 export type TableDensity = (typeof TABLE_DENSITIES)[number];
@@ -29,6 +29,10 @@ export interface TableMeta {
   bg?: Record<string, CellColor>;
   /** 合并的格子：每项是 "A3:B4" 这样的矩形，左上角那格的内容代表整块 */
   merge?: string[];
+  /** 格子的文字颜色，键是 A1 式坐标 */
+  fg?: Record<string, CellColor>;
+  /** 第一列当标题列（加底色、加粗） */
+  headerCol?: boolean;
   /** 这张表自己的样式、行距（不写就跟着设置走） */
   style?: TableStyle;
   density?: TableDensity;
@@ -148,6 +152,17 @@ function sanitizeMeta(raw: Record<string, unknown>): TableMeta {
     if (Array.isArray(raw.w)) meta.w = raw.w.map((x) => (typeof x === "number" && isFinite(x) && x > 0 ? Math.round(x) : null));
     else delete meta.w;
   }
+  if (raw.headerCol !== undefined && raw.headerCol !== true) delete meta.headerCol;
+  if (raw.fg !== undefined) {
+    const fg: Record<string, CellColor> = {};
+    if (raw.fg && typeof raw.fg === "object" && !Array.isArray(raw.fg)) {
+      for (const [k, v] of Object.entries(raw.fg as Record<string, unknown>)) {
+        if (parseRef(k) && (CELL_COLORS as readonly string[]).includes(v as string)) fg[k] = v as CellColor;
+      }
+    }
+    if (Object.keys(fg).length) meta.fg = fg;
+    else delete meta.fg;
+  }
   if (raw.bg !== undefined) {
     const bg: Record<string, CellColor> = {};
     if (raw.bg && typeof raw.bg === "object" && !Array.isArray(raw.bg)) {
@@ -264,6 +279,7 @@ export function metaToWrite(meta: TableMeta, cols: number): TableMeta | null {
     } else delete out.w;
   }
   if (out.bg && !Object.keys(out.bg).length) delete out.bg;
+  if (out.fg && !Object.keys(out.fg).length) delete out.fg;
   if (out.merge && !out.merge.length) delete out.merge;
   for (const k of Object.keys(out)) if (out[k] === undefined) delete out[k];
   return Object.keys(out).length ? out : null;

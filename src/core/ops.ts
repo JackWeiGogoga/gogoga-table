@@ -19,6 +19,7 @@ function cloneMeta(m: TableMeta): TableMeta {
   const out: TableMeta = { ...m };
   if (m.w) out.w = m.w.slice();
   if (m.bg) out.bg = { ...m.bg };
+  if (m.fg) out.fg = { ...m.fg };
   if (m.merge) out.merge = m.merge.slice();
   return out;
 }
@@ -28,14 +29,18 @@ export const colCount = (t: Table) => t.align.length;
 
 /** 按坐标记的设置换位置：map 返回新的 (行, 列)，null 表示这格没了 */
 function remapCells(meta: TableMeta, map: (r: number, c: number) => [number, number] | null): void {
-  if (!meta.bg) return;
-  const next: Record<string, CellColor> = {};
-  for (const [k, v] of Object.entries(meta.bg)) {
-    const p = parseRef(k);
-    const to = p && map(p.r, p.c);
-    if (to) next[cellRef(to[0], to[1])] = v;
+  // 底色和文字颜色都按格子坐标记，一起挪
+  for (const key of ["bg", "fg"] as const) {
+    const src = meta[key];
+    if (!src) continue;
+    const next: Record<string, CellColor> = {};
+    for (const [k, v] of Object.entries(src)) {
+      const p = parseRef(k);
+      const to = p && map(p.r, p.c);
+      if (to) next[cellRef(to[0], to[1])] = v;
+    }
+    meta[key] = next;
   }
-  meta.bg = next;
 }
 
 /**
@@ -204,6 +209,31 @@ export function setBg(t: Table, cells: readonly { r: number; c: number }[], colo
   return n;
 }
 
+/** 给一片格子设文字颜色，color 为 null 是去掉 */
+export function setFg(t: Table, cells: readonly { r: number; c: number }[], color: CellColor | null): Table {
+  const n = cloneTable(t);
+  const fg = { ...(n.meta.fg ?? {}) };
+  for (const { r, c } of cells) {
+    if (r < 0 || r >= rowCount(t) || c < 0 || c >= colCount(t)) continue;
+    const k = cellRef(r, c);
+    if (color) fg[k] = color;
+    else delete fg[k];
+  }
+  n.meta.fg = fg;
+  return n;
+}
+
+export function fgOf(t: Table, r: number, c: number): CellColor | null {
+  return t.meta.fg?.[cellRef(r, c)] ?? null;
+}
+
+/** 一次设好所有列宽（平均分布、撑满页面） */
+export function setWidths(t: Table, ws: readonly number[]): Table {
+  const n = cloneTable(t);
+  n.meta.w = Array.from({ length: colCount(t) }, (_, c) => (ws[c] ? Math.max(40, Math.min(2000, Math.round(ws[c]))) : null));
+  return n;
+}
+
 export function bgOf(t: Table, r: number, c: number): CellColor | null {
   return t.meta.bg?.[cellRef(r, c)] ?? null;
 }
@@ -325,8 +355,12 @@ export function fillRange(t: Table, src: Rect, dir: FillDir, count: number, copy
 // ---------- 整张表 ----------
 
 /** 这张表自己的样式 / 行距；null 是跟着设置走 */
-export function setTableLook(t: Table, look: { style?: TableStyle | null; density?: TableDensity | null }): Table {
+export function setTableLook(t: Table, look: { style?: TableStyle | null; density?: TableDensity | null; headerCol?: boolean }): Table {
   const n = cloneTable(t);
+  if (look.headerCol !== undefined) {
+    if (look.headerCol) n.meta.headerCol = true;
+    else delete n.meta.headerCol;
+  }
   if (look.style !== undefined) {
     if (look.style) n.meta.style = look.style;
     else delete n.meta.style;
@@ -345,11 +379,13 @@ export function alignAll(t: Table, a: Align): Table {
   return n;
 }
 
-/** 去掉所有底色 */
+/** 去掉所有底色和文字颜色 */
 export function clearAllBg(t: Table): Table {
-  if (!t.meta.bg || !Object.keys(t.meta.bg).length) return t;
+  const has = (m?: Record<string, unknown>) => !!m && Object.keys(m).length > 0;
+  if (!has(t.meta.bg) && !has(t.meta.fg)) return t;
   const n = cloneTable(t);
   delete n.meta.bg;
+  delete n.meta.fg;
   return n;
 }
 
@@ -447,12 +483,14 @@ export function duplicateRow(t: Table, r: number): Table {
   if (r < 1 || r >= rowCount(t)) return t;
   const n = insertRow(t, r + 1);
   n.cells[r + 1] = t.cells[r].slice();
-  const bg = { ...(n.meta.bg ?? {}) };
-  for (let c = 0; c < colCount(t); c++) {
-    const v = t.meta.bg?.[cellRef(r, c)];
-    if (v) bg[cellRef(r + 1, c)] = v;
+  for (const key of ["bg", "fg"] as const) {
+    const m = { ...(n.meta[key] ?? {}) };
+    for (let c = 0; c < colCount(t); c++) {
+      const v = t.meta[key]?.[cellRef(r, c)];
+      if (v) m[cellRef(r + 1, c)] = v;
+    }
+    n.meta[key] = m;
   }
-  n.meta.bg = bg;
   return n;
 }
 
@@ -464,12 +502,14 @@ export function duplicateCol(t: Table, c: number): Table {
   n.align[c + 1] = t.align[c];
   const w = widthOf(t, c);
   if (w) n = setWidth(n, c + 1, w);
-  const bg = { ...(n.meta.bg ?? {}) };
-  for (let r = 0; r < rowCount(t); r++) {
-    const v = t.meta.bg?.[cellRef(r, c)];
-    if (v) bg[cellRef(r, c + 1)] = v;
+  for (const key of ["bg", "fg"] as const) {
+    const m = { ...(n.meta[key] ?? {}) };
+    for (let r = 0; r < rowCount(t); r++) {
+      const v = t.meta[key]?.[cellRef(r, c)];
+      if (v) m[cellRef(r, c + 1)] = v;
+    }
+    n.meta[key] = m;
   }
-  n.meta.bg = bg;
   return n;
 }
 

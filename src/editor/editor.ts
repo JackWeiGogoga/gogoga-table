@@ -14,7 +14,7 @@
  */
 
 import { type Align, CELL_COLORS, type CellColor, isDelimiterRow, parseTable, type Rect, type Table, TABLE_DENSITIES, TABLE_STYLES, type TableDensity, type TableStyle } from "../core/table";
-import { alignAll, autoWidthAll, bgOf, canSortRows, CHECK_RE, duplicateCol, duplicateRow, insertCols, insertRows, sortRows, toggleCheck, editCell, mergedText, shownText, clearAllBg, clearCells, fillRange, setTableLook, type FillDir, isCovered, colCount, deleteCol, deleteRow, insertCol, insertRow, mergeAt, mergeCells, merges, moveCol, moveRow, pasteGrid, rowCount, setAlign, setBg, setCell, setWidth, unmergeAt, widthOf } from "../core/ops";
+import { alignAll, autoWidthAll, bgOf, fgOf, setFg, setWidths, canSortRows, CHECK_RE, duplicateCol, duplicateRow, insertCols, insertRows, sortRows, toggleCheck, editCell, mergedText, shownText, clearAllBg, clearCells, fillRange, setTableLook, type FillDir, isCovered, colCount, deleteCol, deleteRow, insertCol, insertRow, mergeAt, mergeCells, merges, moveCol, moveRow, pasteGrid, rowCount, setAlign, setBg, setCell, setWidth, unmergeAt, widthOf } from "../core/ops";
 import { fromTSV, toHTML, toTSV } from "../core/clipboard";
 import { t } from "./i18n";
 
@@ -23,6 +23,8 @@ export interface MenuItem {
   icon?: string;
   /** 色块（底色菜单用） */
   swatch?: CellColor | "none";
+  /** 色块是文字颜色（画成一个带颜色的「A」） */
+  textSwatch?: boolean;
   checked?: boolean;
   disabled?: boolean;
   danger?: boolean;
@@ -403,6 +405,9 @@ export class TableEditor {
         if (a) cell.dataset.align = a;
         const bg = bgOf(tb, r, c);
         if (bg) cell.dataset.bg = bg;
+        const fg = fgOf(tb, r, c);
+        if (fg) cell.dataset.fg = fg;
+        if (tb.meta.headerCol && c === 0 && r > 0) cell.classList.add("is-head-col");
         const content = cell.appendChild(doc.createElement("div"));
         content.className = "ggt-content";
         this.fill(content, m ? mergedText(tb, m) : tb.cells[r][c]);
@@ -1608,9 +1613,28 @@ export class TableEditor {
       align("center", t("alignAllCenter"), "align-center"),
       align("right", t("alignAllRight"), "align-right"),
       { separator: true },
+      { title: t("headerColumn"), icon: "panel-left", checked: !!tb.meta.headerCol, run: () => keep(setTableLook(this.table, { headerCol: !this.table.meta.headerCol })) },
+      { separator: true },
+      { title: t("distributeCols"), icon: "columns-3", run: () => keep(setWidths(this.table, this.colWidths().map((_, _i, all) => all.reduce((a, b) => a + b, 0) / all.length))) },
+      { title: t("fitWidth"), icon: "move-horizontal", run: () => keep(setWidths(this.table, this.fitWidths())) },
       { title: t("autoWidthAll"), icon: "move-horizontal", disabled: !tb.meta.w?.some((x) => x != null), run: () => keep(autoWidthAll(this.table)) },
-      { title: t("clearAllBg"), icon: "paintbrush", disabled: !tb.meta.bg || !Object.keys(tb.meta.bg).length, run: () => keep(clearAllBg(this.table)) },
+      { title: t("clearAllBg"), icon: "paintbrush", disabled: !Object.keys(tb.meta.bg ?? {}).length && !Object.keys(tb.meta.fg ?? {}).length, run: () => keep(clearAllBg(this.table)) },
     ];
+  }
+
+  /** 每列现在实际的宽度 */
+  private colWidths(): number[] {
+    return Array.from(this.tableEl.querySelectorAll("col")).map((c) => c.getBoundingClientRect().width);
+  }
+
+  /** 撑满页面：按现在各列的比例放大 / 缩小到正文的可用宽度 */
+  private fitWidths(): number[] {
+    const ws = this.colWidths();
+    const sum = ws.reduce((a, b) => a + b, 0) || 1;
+    const host = this.root.parentElement;
+    // 表格外层左右各有一点留白（放手柄、加号）
+    const avail = (host?.clientWidth ?? sum) - 4;
+    return ws.map((w) => (w / sum) * avail);
   }
 
   private rowMenu(p: Pos): MenuItem[] {
@@ -1738,10 +1762,15 @@ export class TableEditor {
   private colorItems(cells: Pos[]): MenuItem[] {
     const current = new Set(cells.map((p) => bgOf(this.table, p.r, p.c) ?? "none"));
     const one = current.size === 1 ? [...current][0] : null;
+    const fgs = new Set(cells.map((p) => fgOf(this.table, p.r, p.c) ?? "none"));
+    const oneFg = fgs.size === 1 ? [...fgs][0] : null;
     return [
       { title: t("color") },
       { swatch: "none", title: t("noColor"), checked: one === "none", run: () => this.applyKeepRange(setBg(this.table, cells, null)) },
       ...CELL_COLORS.map((color): MenuItem => ({ swatch: color, title: t(color), checked: one === color, run: () => this.applyKeepRange(setBg(this.table, cells, color)) })),
+      { title: t("textColor") },
+      { swatch: "none", textSwatch: true, title: t("defaultText"), checked: oneFg === "none", run: () => this.applyKeepRange(setFg(this.table, cells, null)) },
+      ...CELL_COLORS.map((color): MenuItem => ({ swatch: color, textSwatch: true, title: t(color), checked: oneFg === color, run: () => this.applyKeepRange(setFg(this.table, cells, color)) })),
     ];
   }
 
@@ -1766,8 +1795,11 @@ export class TableEditor {
         }
         const b = swatches.appendChild(doc.createElement("button"));
         b.type = "button";
-        b.className = "ggt-swatch" + (item.checked ? " is-checked" : "");
-        b.dataset.bg = item.swatch;
+        b.className = "ggt-swatch" + (item.checked ? " is-checked" : "") + (item.textSwatch ? " is-text" : "");
+        if (item.textSwatch) {
+          b.dataset.fg = item.swatch;
+          b.textContent = "A";
+        } else b.dataset.bg = item.swatch;
         b.setAttribute("aria-label", item.title ?? "");
         b.title = item.title ?? "";
         b.addEventListener("click", () => {
@@ -1777,6 +1809,7 @@ export class TableEditor {
         continue;
       }
       if (!item.run) {
+        swatches = null;
         const label = pop.appendChild(doc.createElement("div"));
         label.className = "ggt-menu-label";
         label.textContent = item.title ?? "";

@@ -65,3 +65,22 @@ test("勾选框：[ ] 和 [x] 来回切，后面的文字不动；不是勾选�
   assert.equal(toggleCheck(t, 3, 1), t);
   assert.equal(toggleCheck(t, 1, 0), t);
 });
+
+import { clearAllBg, deleteRow as delRow, fgOf, insertRow as insRow, moveCol as mvCol, setFg, setTableLook, setWidths } from "../../src/core/ops";
+import { parseMetaLine, serializeTable } from "../../src/core/table";
+
+test("第二批：文字颜色跟着行列走、写回、清除；标题列开关；三线表样式；一次设好列宽", () => {
+  let t = setFg(T([["a", "b"], ["1", "2"], ["3", "4"]]), [{ r: 1, c: 1 }], "red");
+  assert.equal(fgOf(t, 1, 1), "red");
+  assert.equal(fgOf(insRow(t, 1), 2, 1), "red");
+  assert.equal(fgOf(mvCol(t, 1, 0), 1, 0), "red");
+  assert.equal(delRow(t, 1).meta.fg && Object.keys(delRow(t, 1).meta.fg!).length, 0);
+  assert.match(serializeTable(t).at(-1)!, /"fg":\{"B2":"red"\}/);
+  assert.equal(clearAllBg(t).meta.fg, undefined);
+  t = setTableLook(t, { headerCol: true, style: "academic" });
+  assert.equal(t.meta.headerCol, true);
+  assert.equal(t.meta.style, "academic");
+  assert.equal(setTableLook(t, { headerCol: false }).meta.headerCol, undefined);
+  assert.deepEqual(setWidths(t, [100, 33.4]).meta.w, [100, 40]);
+  assert.deepEqual(parseMetaLine('<!-- gogoga-table: {"headerCol":1,"fg":{"A1":"pink","B2":"blue"}} -->'), { fg: { B2: "blue" } });
+});

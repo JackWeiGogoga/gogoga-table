@@ -7,7 +7,7 @@ import { guardEditorHotkeys } from "./keys";
 export interface TableSettings {
   /** 接管 Markdown 表格（关掉就完全是 Obsidian 原生表格） */
   enabled: boolean;
-  preset: "default" | "zebra" | "minimal";
+  preset: "default" | "zebra" | "minimal" | "academic";
   density: "comfortable" | "compact";
 }
 

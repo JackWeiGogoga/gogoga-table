@@ -338,3 +338,36 @@
 .ggt-grid-cell.is-on { background: color-mix(in srgb, var(--interactive-accent) 22%, transparent); border-color: var(--interactive-accent); }
 .ggt-grid-hint { margin-top: 8px; color: var(--text-muted); font-size: var(--font-ui-small, 13px); }
 .ggt-grid-modal { width: auto; }
+
+/* 文字颜色：用主题的颜色，深浅色都清楚 */
+.ggt .ggt-cell[data-fg="gray"] { color: var(--text-muted); }
+.ggt .ggt-cell[data-fg="red"] { color: var(--color-red); }
+.ggt .ggt-cell[data-fg="orange"] { color: var(--color-orange); }
+.ggt .ggt-cell[data-fg="yellow"] { color: var(--color-yellow); }
+.ggt .ggt-cell[data-fg="green"] { color: var(--color-green); }
+.ggt .ggt-cell[data-fg="blue"] { color: var(--color-blue); }
+.ggt .ggt-cell[data-fg="purple"] { color: var(--color-purple); }
+.ggt-menu button.ggt-swatch.is-text { background: var(--background-primary); font-weight: 700; font-size: 13px; line-height: 1; color: var(--text-normal); }
+.ggt-menu button.ggt-swatch.is-text[data-fg="none"] { background: var(--background-primary); color: var(--text-normal); }
+.ggt-menu button.ggt-swatch.is-text[data-fg="gray"] { color: var(--text-muted); }
+.ggt-menu button.ggt-swatch.is-text[data-fg="red"] { color: var(--color-red); }
+.ggt-menu button.ggt-swatch.is-text[data-fg="orange"] { color: var(--color-orange); }
+.ggt-menu button.ggt-swatch.is-text[data-fg="yellow"] { color: var(--color-yellow); }
+.ggt-menu button.ggt-swatch.is-text[data-fg="green"] { color: var(--color-green); }
+.ggt-menu button.ggt-swatch.is-text[data-fg="blue"] { color: var(--color-blue); }
+.ggt-menu button.ggt-swatch.is-text[data-fg="purple"] { color: var(--color-purple); }
+
+/* 标题列：第一列和表头一样的浅底、加粗 */
+.ggt .ggt-cell.is-head-col { background-color: var(--ggt-head-bg); font-weight: var(--font-semibold, 600); }
+
+/* 三线表：顶线、表头下线、底线，没有竖线和中间的横线 */
+.ggt[data-preset="academic"] .ggt-cell { border-left: 0 !important; border-right: 0; border-bottom: 0; background: transparent; }
+.ggt[data-preset="academic"] thead .ggt-cell { border-top: 1.5px solid var(--text-normal); border-bottom: 1px solid var(--text-normal); background: transparent; }
+.ggt[data-preset="academic"] tbody tr:last-child .ggt-cell { border-bottom: 1.5px solid var(--text-normal); }
+.ggt[data-preset="academic"] .ggt-cell[data-bg="gray"] { background: rgba(var(--mono-rgb-100), 0.07); }
+.ggt[data-preset="academic"] .ggt-cell[data-bg="red"] { background: rgba(var(--color-red-rgb), 0.14); }
+.ggt[data-preset="academic"] .ggt-cell[data-bg="orange"] { background: rgba(var(--color-orange-rgb), 0.15); }
+.ggt[data-preset="academic"] .ggt-cell[data-bg="yellow"] { background: rgba(var(--color-yellow-rgb), 0.18); }
+.ggt[data-preset="academic"] .ggt-cell[data-bg="green"] { background: rgba(var(--color-green-rgb), 0.14); }
+.ggt[data-preset="academic"] .ggt-cell[data-bg="blue"] { background: rgba(var(--color-blue-rgb), 0.13); }
+.ggt[data-preset="academic"] .ggt-cell[data-bg="purple"] { background: rgba(var(--color-purple-rgb), 0.13); }

@@ -109,7 +109,7 @@ class TableSettingTab extends PluginSettingTab {
       .setName(zh ? "样式" : "Style")
       .addDropdown((dd) =>
         dd
-          .addOptions(zh ? { default: "默认", zebra: "斑马纹", minimal: "极简线" } : { default: "Default", zebra: "Zebra", minimal: "Minimal" })
+          .addOptions(zh ? { default: "默认", zebra: "斑马纹", minimal: "极简线", academic: "三线表" } : { default: "Default", zebra: "Zebra", minimal: "Minimal", academic: "Three-line" })
           .setValue(s.preset)
           .onChange(async (v) => {
             s.preset = v as TableSettings["preset"];
