@@ -393,3 +393,108 @@ export function editCell(t: Table, r: number, c: number, text: string): Table {
   n.cells[m.r1][m.c1] = text;
   return n;
 }
+
+// ---------- 排序、复制行列、多行多列 ----------
+
+const NUM_LIKE = /^[-+]?[¥$€£]?\s*[\d,]*\.?\d+\s*%?$/;
+const DATE_LIKE = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/;
+
+/** 排序用的比较：空的总在最后；都是数字按数值，都是日期按时间，其余按中文（拼音）和数字自然顺序 */
+function compareCells(a: string, b: string): number {
+  const ea = !a.trim();
+  const eb = !b.trim();
+  if (ea || eb) return ea === eb ? 0 : ea ? 1 : -1;
+  const na = NUM_LIKE.test(a.trim());
+  const nb = NUM_LIKE.test(b.trim());
+  if (na && nb) return parseFloat(a.replace(/[^\d.+-]/g, "")) - parseFloat(b.replace(/[^\d.+-]/g, ""));
+  const da = DATE_LIKE.exec(a.trim());
+  const db = DATE_LIKE.exec(b.trim());
+  if (da && db) return Date.UTC(+da[1], +da[2] - 1, +da[3]) - Date.UTC(+db[1], +db[2] - 1, +db[3]);
+  return a.localeCompare(b, "zh-Hans-CN", { numeric: true, sensitivity: "base" });
+}
+
+/** 有跨行的合并时不能排序（排完合并区域就散了） */
+export function canSortRows(t: Table): boolean {
+  return !merges(t).some((m) => m.r2 > m.r1 && m.r2 >= 1);
+}
+
+/**
+ * 按第 c 列给数据行排序（表头不动）；底色跟着行走。lastFixed：最后一行不参与（合计行）。
+ * 一样的保持原来的先后
+ */
+export function sortRows(t: Table, c: number, desc: boolean, lastFixed = false): Table {
+  if (!canSortRows(t)) return t;
+  const last = rowCount(t) - (lastFixed ? 1 : 0);
+  const idx = Array.from({ length: Math.max(0, last - 1) }, (_, i) => i + 1);
+  const sorted = [...idx].sort((x, y) => {
+    const d = compareCells(t.cells[x][c], t.cells[y][c]);
+    const empty = !t.cells[x][c].trim() || !t.cells[y][c].trim();
+    return (desc && !empty ? -d : d) || x - y;
+  });
+  if (sorted.every((v, i) => v === idx[i])) return t;
+  const n = cloneTable(t);
+  const pos = new Map<number, number>();
+  sorted.forEach((from, i) => {
+    n.cells[i + 1] = t.cells[from].slice();
+    pos.set(from, i + 1);
+  });
+  remapCells(n.meta, (r, cc) => [pos.get(r) ?? r, cc]);
+  return n;
+}
+
+/** 在第 r 行下面复制一行（底色一起复制） */
+export function duplicateRow(t: Table, r: number): Table {
+  if (r < 1 || r >= rowCount(t)) return t;
+  const n = insertRow(t, r + 1);
+  n.cells[r + 1] = t.cells[r].slice();
+  const bg = { ...(n.meta.bg ?? {}) };
+  for (let c = 0; c < colCount(t); c++) {
+    const v = t.meta.bg?.[cellRef(r, c)];
+    if (v) bg[cellRef(r + 1, c)] = v;
+  }
+  n.meta.bg = bg;
+  return n;
+}
+
+/** 在第 c 列右边复制一列（对齐、列宽、底色一起复制） */
+export function duplicateCol(t: Table, c: number): Table {
+  if (c < 0 || c >= colCount(t)) return t;
+  let n = insertCol(t, c + 1);
+  for (let r = 0; r < rowCount(t); r++) n.cells[r][c + 1] = t.cells[r][c];
+  n.align[c + 1] = t.align[c];
+  const w = widthOf(t, c);
+  if (w) n = setWidth(n, c + 1, w);
+  const bg = { ...(n.meta.bg ?? {}) };
+  for (let r = 0; r < rowCount(t); r++) {
+    const v = t.meta.bg?.[cellRef(r, c)];
+    if (v) bg[cellRef(r, c + 1)] = v;
+  }
+  n.meta.bg = bg;
+  return n;
+}
+
+/** 在第 at 行前面插入 k 行 */
+export function insertRows(t: Table, at: number, k: number): Table {
+  let n = t;
+  for (let i = 0; i < k; i++) n = insertRow(n, at);
+  return n;
+}
+
+/** 在第 at 列前面插入 k 列 */
+export function insertCols(t: Table, at: number, k: number): Table {
+  let n = t;
+  for (let i = 0; i < k; i++) n = insertCol(n, at);
+  return n;
+}
+
+// ---------- 勾选框 ----------
+
+export const CHECK_RE = /^\[( |x|X)\](?=\s|$)/;
+
+/** 格子以 [ ] / [x] 开头：切换勾选；不是勾选框返回原表 */
+export function toggleCheck(t: Table, r: number, c: number): Table {
+  const v = t.cells[r]?.[c];
+  const m = v === undefined ? null : CHECK_RE.exec(v);
+  if (!m) return t;
+  return setCell(t, r, c, (m[1] === " " ? "[x]" : "[ ]") + v.slice(3));
+}

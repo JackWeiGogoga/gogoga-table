@@ -14,7 +14,7 @@
  */
 
 import { type Align, CELL_COLORS, type CellColor, isDelimiterRow, parseTable, type Rect, type Table, TABLE_DENSITIES, TABLE_STYLES, type TableDensity, type TableStyle } from "../core/table";
-import { alignAll, autoWidthAll, bgOf, editCell, mergedText, shownText, clearAllBg, clearCells, fillRange, setTableLook, type FillDir, isCovered, colCount, deleteCol, deleteRow, insertCol, insertRow, mergeAt, mergeCells, merges, moveCol, moveRow, pasteGrid, rowCount, setAlign, setBg, setCell, setWidth, unmergeAt, widthOf } from "../core/ops";
+import { alignAll, autoWidthAll, bgOf, canSortRows, CHECK_RE, duplicateCol, duplicateRow, insertCols, insertRows, sortRows, toggleCheck, editCell, mergedText, shownText, clearAllBg, clearCells, fillRange, setTableLook, type FillDir, isCovered, colCount, deleteCol, deleteRow, insertCol, insertRow, mergeAt, mergeCells, merges, moveCol, moveRow, pasteGrid, rowCount, setAlign, setBg, setCell, setWidth, unmergeAt, widthOf } from "../core/ops";
 import { fromTSV, toHTML, toTSV } from "../core/clipboard";
 import { t } from "./i18n";
 
@@ -41,6 +41,10 @@ export interface EditorHost {
   redo?(): void;
   /** 选中第一行再往上、最后一行再往下、Esc：宿主把光标挪出表格 */
   onLeave?(where: "above" | "below" | "escape"): void;
+  /** 编辑格子时输入 [[ 补全笔记链接：返回要插进去的链接文字（最多十几个） */
+  suggestLinks?(query: string): string[];
+  /** 编辑格子时输入 # 补全标签：返回不带 # 的标签 */
+  suggestTags?(query: string): string[];
   /** 选中或开始编辑时通知宿主（实时预览里用来防止编辑器抢走光标） */
   onFocus?(): void;
   readonly?: boolean;
@@ -53,6 +57,38 @@ export function sameTable(a: Table, b: Table): boolean {
   return JSON.stringify([a.cells, a.align, a.meta]) === JSON.stringify([b.cells, b.align, b.meta]);
 }
 
+
+/** 最近一次选中格子的那张表：命令（命令面板、快捷键）作用在它上面 */
+let lastActive: TableEditor | null = null;
+function markActive(e: TableEditor): void {
+  lastActive = e;
+}
+export function activeTableEditor(): TableEditor | null {
+  return lastActive && lastActive.hasSelection() ? lastActive : null;
+}
+
+export const TABLE_COMMANDS = [
+  "insert-row-above",
+  "insert-row-below",
+  "insert-col-left",
+  "insert-col-right",
+  "duplicate-row",
+  "duplicate-col",
+  "delete-row",
+  "delete-col",
+  "sort-asc",
+  "sort-desc",
+  "merge-cells",
+  "unmerge-cells",
+  "clear-cells",
+  "align-left",
+  "align-center",
+  "align-right",
+  "select-row",
+  "select-col",
+  "toggle-checkbox",
+] as const;
+export type TableCommand = (typeof TABLE_COMMANDS)[number];
 
 export class TableEditor {
   readonly root: HTMLElement;
@@ -82,6 +118,8 @@ export class TableEditor {
   private pending: Table | null = null;
   private hover: Pos | null = null;
   private popover: HTMLElement | null = null;
+  /** 编辑时的补全列表（[[ 链接、# 标签） */
+  private suggest: { kind: "link" | "tag"; start: number; items: string[]; index: number; el: HTMLElement } | null = null;
   private resize: { c: number; startX: number; startW: number; col: HTMLElement } | null = null;
   private destroyed = false;
   /** 上一次长按开菜单的时间（安卓随后还会来一次右键事件，忽略掉） */
@@ -163,9 +201,105 @@ export class TableEditor {
     return this.editing;
   }
 
+  hasSelection(): boolean {
+    return !this.destroyed && !!this.sel && this.root.isConnected;
+  }
+
+  /** 命令：作用在选中的格子（或选区）上。做不了返回 false */
+  runCommand(id: TableCommand): boolean {
+    const p = this.sel;
+    if (!p || this.host.readonly) return false;
+    if (this.editing) this.commit();
+    const tb = this.table;
+    const r = this.rangeRect() ?? { r1: p.r, c1: p.c, r2: p.r, c2: p.c };
+    const rows = r.r2 - r.r1 + 1;
+    const cols = r.c2 - r.c1 + 1;
+    switch (id) {
+      case "insert-row-above":
+        if (r.r1 === 0) return false;
+        this.apply(insertRows(tb, r.r1, rows), { r: r.r1, c: p.c });
+        return true;
+      case "insert-row-below":
+        this.apply(insertRows(tb, r.r2 + 1, rows), { r: r.r2 + 1, c: p.c });
+        return true;
+      case "insert-col-left":
+        this.apply(insertCols(tb, r.c1, cols), { r: p.r, c: r.c1 });
+        return true;
+      case "insert-col-right":
+        this.apply(insertCols(tb, r.c2 + 1, cols), { r: p.r, c: r.c2 + 1 });
+        return true;
+      case "duplicate-row":
+        if (p.r === 0) return false;
+        this.apply(duplicateRow(tb, p.r), { r: p.r + 1, c: p.c });
+        return true;
+      case "duplicate-col":
+        this.apply(duplicateCol(tb, p.c), { r: p.r, c: p.c + 1 });
+        return true;
+      case "delete-row": {
+        if (r.r1 === 0 || rowCount(tb) - rows < 2) return false;
+        let n = tb;
+        for (let i = r.r2; i >= r.r1; i--) n = deleteRow(n, i);
+        this.apply(n, { r: Math.min(r.r1, rowCount(n) - 1), c: p.c });
+        return true;
+      }
+      case "delete-col": {
+        if (colCount(tb) - cols < 1) return false;
+        let n = tb;
+        for (let i = r.c2; i >= r.c1; i--) n = deleteCol(n, i);
+        this.apply(n, { r: p.r, c: Math.min(r.c1, colCount(n) - 1) });
+        return true;
+      }
+      case "sort-asc":
+      case "sort-desc":
+        if (!canSortRows(tb)) return false;
+        this.apply(sortRows(tb, p.c, id === "sort-desc", this.hasTotalRow()), p);
+        return true;
+      case "merge-cells":
+        if (!this.isMulti()) return false;
+        this.apply(mergeCells(tb, r), { r: r.r1, c: r.c1 });
+        return true;
+      case "unmerge-cells":
+        if (!mergeAt(tb, p.r, p.c)) return false;
+        this.apply(unmergeAt(tb, p.r, p.c), p);
+        return true;
+      case "clear-cells":
+        this.applyKeepRange(clearCells(tb, this.rangeCells()));
+        return true;
+      case "align-left":
+      case "align-center":
+      case "align-right": {
+        const a = id.slice(6) as Align;
+        let n = tb;
+        for (let c = r.c1; c <= r.c2; c++) n = setAlign(n, c, a);
+        this.applyKeepRange(n);
+        return true;
+      }
+      case "select-row":
+        this.anchor = { r: p.r, c: 0 };
+        this.sel = { r: p.r, c: colCount(tb) - 1 };
+        this.lineSel = true;
+        this.markSel();
+        return true;
+      case "select-col":
+        this.anchor = { r: 0, c: p.c };
+        this.sel = { r: rowCount(tb) - 1, c: p.c };
+        this.lineSel = true;
+        this.markSel();
+        return true;
+      case "toggle-checkbox": {
+        const v = tb.cells[p.r][p.c];
+        this.apply(setCell(tb, p.r, p.c, CHECK_RE.test(v) ? v.replace(CHECK_RE, "").trimStart() : `[ ] ${v}`.trimEnd()), p);
+        return true;
+      }
+    }
+    return false;
+  }
+
   destroy(): void {
+    if (lastActive === this) lastActive = null;
     this.destroyed = true;
     this.closePopover();
+    this.closeSuggest();
     for (const f of this.cleanups) f();
     this.root.remove();
   }
@@ -289,6 +423,22 @@ export class TableEditor {
     }
     el.classList.remove("is-empty");
     el.classList.toggle("is-plain", !this.host.renderMarkdown);
+    // [ ] / [x] 开头：画成能点的勾选框，后面的文字照常渲染
+    const check = CHECK_RE.exec(md);
+    if (check) {
+      const box = el.appendChild(el.ownerDocument.createElement("input"));
+      box.type = "checkbox";
+      box.className = "ggt-check task-list-item-checkbox";
+      box.checked = check[1] !== " ";
+      box.tabIndex = -1;
+      const rest = md.slice(3).trim();
+      if (!rest) return;
+      const span = el.appendChild(el.ownerDocument.createElement("span"));
+      span.className = "ggt-check-text";
+      if (this.host.renderMarkdown) this.host.renderMarkdown(span, rest);
+      else span.textContent = rest;
+      return;
+    }
     if (this.host.renderMarkdown) this.host.renderMarkdown(el, md);
     else el.textContent = md;
   }
@@ -421,6 +571,7 @@ export class TableEditor {
     if (extend && this.sel && p) this.anchor = this.anchor ?? this.sel;
     else this.anchor = null;
     this.sel = p && this.canon(p);
+    if (p) markActive(this);
     if (this.anchor && this.sel && this.anchor.r === this.sel.r && this.anchor.c === this.sel.c) this.anchor = null;
     this.markSel();
     if (p && focus && !this.host.readonly) {
@@ -472,6 +623,7 @@ export class TableEditor {
 
   /** 编辑完：内容变了就交给宿主 */
   private commit(): void {
+    this.closeSuggest();
     if (!this.editing || !this.sel) return;
     const p = this.sel;
     this.editing = false;
@@ -493,6 +645,7 @@ export class TableEditor {
   }
 
   private cancel(): void {
+    this.closeSuggest();
     if (!this.editing || !this.sel) return;
     this.editing = false;
     this.cellEl(this.sel)?.classList.remove("is-editing");
@@ -598,6 +751,16 @@ export class TableEditor {
       if (!same || !this.editing) this.setSel(p, true);
       this.dragSelect(ev);
     });
+    // 点勾选框：切换 [ ] / [x]
+    this.on(this.tableEl, "click", (ev) => {
+      const box = (ev.target as HTMLElement).closest<HTMLInputElement>("input.ggt-check");
+      const cell = box?.closest<HTMLElement>(".ggt-cell");
+      if (!box || !cell) return;
+      ev.preventDefault();
+      if (this.host.readonly) return;
+      const p = { r: Number(cell.dataset.r), c: Number(cell.dataset.c) };
+      this.apply(toggleCheck(this.table, p.r, p.c), p);
+    });
     this.on(this.tableEl, "dblclick", (ev) => {
       const target = ev.target as HTMLElement;
       if (target.closest(".ggt-cell") && !this.editing) this.startEdit(true);
@@ -663,6 +826,7 @@ export class TableEditor {
     this.on(this.input, "input", () => {
       if (!this.editing) this.startEdit(false);
       else this.autosize();
+      this.updateSuggest();
     });
     this.on(this.input, "compositionstart", () => {
       if (!this.editing) this.startEdit(false);
@@ -692,6 +856,16 @@ export class TableEditor {
     // ⌘ 或 Ctrl 都算（不去判断平台）：Mac 上 Ctrl+Z 本来也没有别的用处
     const mod = ev.metaKey || ev.ctrlKey;
     if (this.editing) {
+      if (this.suggest && this.onSuggestKey(ev)) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        return;
+      }
+      if (this.formatKey(ev)) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        return;
+      }
       if (ev.key === "Enter" && !ev.shiftKey && !ev.altKey && !mod) {
         ev.preventDefault();
         this.commit();
@@ -745,6 +919,13 @@ export class TableEditor {
       case "Tab":
         stop();
         return this.move(0, ev.shiftKey ? -1 : 1, true);
+      case " ":
+        if (this.sel && CHECK_RE.test(this.table.cells[this.sel.r][this.sel.c])) {
+          stop();
+          this.apply(toggleCheck(this.table, this.sel.r, this.sel.c), this.sel);
+          return;
+        }
+        break;
       case "Enter":
       case "F2":
         stop();
@@ -804,6 +985,152 @@ export class TableEditor {
     doc.addEventListener("pointerup", up, true);
     doc.addEventListener("pointercancel", up, true);
     void ev;
+  }
+
+  // ---------- 编辑时的格式和补全 ----------
+
+  /**
+   * 加粗 ⌘B、斜体 ⌘I、删除线 ⌘⇧X、高亮 ⌘⇧H、链接 ⌘K。编辑中改选中的字；只选中格子时给整格加 / 去掉。
+   * 处理了返回 true（Obsidian 那边的快捷键作用域也调这里，免得它改到正文）
+   */
+  formatKey(ev: KeyboardEvent): boolean {
+    const mod = ev.metaKey || ev.ctrlKey;
+    if (!mod || ev.altKey || !this.sel || this.host.readonly) return false;
+    const k = ev.key.toLowerCase();
+    const mark = !ev.shiftKey && k === "b" ? "**" : !ev.shiftKey && k === "i" ? "*" : ev.shiftKey && k === "x" ? "~~" : ev.shiftKey && k === "h" ? "==" : null;
+    const link = !ev.shiftKey && k === "k";
+    if (!mark && !link) return false;
+    if (this.editing) {
+      if (mark) this.wrapSelection(mark);
+      else this.insertLink();
+      return true;
+    }
+    if (!mark) return true;
+    // 只选中格子：选区里每格整格加上（都有了就都去掉）
+    const cells = (this.rangeCells().length ? this.rangeCells() : [this.sel]).filter((p) => !isCovered(this.table, p.r, p.c) && this.table.cells[p.r][p.c].trim());
+    const wrapped = (v: string) => v.length >= mark.length * 2 && v.startsWith(mark) && v.endsWith(mark);
+    const all = cells.length > 0 && cells.every((p) => wrapped(this.table.cells[p.r][p.c].trim()));
+    let next = this.table;
+    for (const p of cells) {
+      const v = this.table.cells[p.r][p.c].trim();
+      next = setCell(next, p.r, p.c, all ? v.slice(mark.length, -mark.length) : `${mark}${v}${mark}`);
+    }
+    this.applyKeepRange(next);
+    return true;
+  }
+
+  /** 选中的文字两边加上 / 去掉标记（** * ~~ ==）；没选文字时插一对，光标放中间 */
+  private wrapSelection(mark: string): void {
+    const el = this.input;
+    const { selectionStart: a, selectionEnd: b, value: v } = el;
+    const before = v.slice(0, a);
+    const after = v.slice(b);
+    if (before.endsWith(mark) && after.startsWith(mark)) {
+      el.value = before.slice(0, -mark.length) + v.slice(a, b) + after.slice(mark.length);
+      el.setSelectionRange(a - mark.length, b - mark.length);
+    } else {
+      el.value = before + mark + v.slice(a, b) + mark + after;
+      el.setSelectionRange(a + mark.length, b + mark.length);
+    }
+    this.autosize();
+  }
+
+  /** ⌘K：选中的文字变成 [文字]()，光标放进括号里填网址 */
+  private insertLink(): void {
+    const el = this.input;
+    const { selectionStart: a, selectionEnd: b, value: v } = el;
+    const text = v.slice(a, b);
+    el.value = `${v.slice(0, a)}[${text}]()${v.slice(b)}`;
+    const pos = a + text.length + 3;
+    el.setSelectionRange(pos, pos);
+    this.autosize();
+  }
+
+  /** 看光标前面是不是在输 [[ 链接或 # 标签，是就弹出补全 */
+  private updateSuggest(): void {
+    if (!this.editing) return this.closeSuggest();
+    const el = this.input;
+    const before = el.value.slice(0, el.selectionStart);
+    const link = /\[\[([^[\]|#^\n]*)$/.exec(before);
+    const tag = /(?:^|\s)#([^\s#[\]|,.;:!?，。；：！？]*)$/.exec(before);
+    let kind: "link" | "tag" | null = null;
+    let query = "";
+    let start = 0;
+    if (link && this.host.suggestLinks) {
+      kind = "link";
+      query = link[1];
+      start = before.length - link[1].length;
+    } else if (tag && this.host.suggestTags) {
+      kind = "tag";
+      query = tag[1];
+      start = before.length - tag[1].length;
+    }
+    const items = kind === "link" ? this.host.suggestLinks?.(query) ?? [] : kind === "tag" ? this.host.suggestTags?.(query) ?? [] : [];
+    if (!kind || !items.length) return this.closeSuggest();
+    const doc = this.root.ownerDocument;
+    const box = this.suggest?.el ?? doc.body.appendChild(doc.createElement("div"));
+    box.className = "ggt-suggest";
+    box.replaceChildren();
+    items.forEach((it, i) => {
+      const row = box.appendChild(doc.createElement("div"));
+      row.className = "ggt-suggest-item" + (i === 0 ? " is-active" : "");
+      row.textContent = kind === "tag" ? `#${it}` : it;
+      row.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        if (this.suggest) this.suggest.index = i;
+        this.acceptSuggest();
+      });
+    });
+    const cell = this.sel && this.cellEl(this.sel);
+    const r = (cell ?? this.input).getBoundingClientRect();
+    box.setAttribute("style", `left:${Math.round(r.left)}px;top:${Math.round(r.bottom + 4)}px`);
+    this.suggest = { kind, start, items, index: 0, el: box };
+  }
+
+  /** 补全列表开着时的按键：上下选、Enter / Tab 确认、Esc 关掉。处理了返回 true */
+  private onSuggestKey(ev: KeyboardEvent): boolean {
+    const sg = this.suggest;
+    if (!sg) return false;
+    if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+      sg.index = (sg.index + (ev.key === "ArrowDown" ? 1 : -1) + sg.items.length) % sg.items.length;
+      Array.from(sg.el.children).forEach((c, i) => c.classList.toggle("is-active", i === sg.index));
+      return true;
+    }
+    if (ev.key === "Enter" || ev.key === "Tab") {
+      this.acceptSuggest();
+      return true;
+    }
+    if (ev.key === "Escape") {
+      this.closeSuggest();
+      return true;
+    }
+    return false;
+  }
+
+  private acceptSuggest(): void {
+    const sg = this.suggest;
+    if (!sg) return;
+    const el = this.input;
+    const v = el.value;
+    const caret = el.selectionStart;
+    const pick = sg.items[sg.index];
+    let insert = pick;
+    let rest = v.slice(caret);
+    if (sg.kind === "link") {
+      // 后面已经有 ]] 就不再补
+      if (rest.startsWith("]]")) rest = rest.slice(2);
+      insert = `${pick}]]`;
+    } else insert = `${pick} `;
+    el.value = v.slice(0, sg.start) + insert + rest;
+    const pos = sg.start + insert.length;
+    el.setSelectionRange(pos, pos);
+    this.closeSuggest();
+    this.autosize();
+  }
+
+  private closeSuggest(): void {
+    this.suggest?.el.remove();
+    this.suggest = null;
   }
 
   // ---------- 下拉填充 ----------
@@ -1290,8 +1617,8 @@ export class TableEditor {
     const tb = this.table;
     const head = p.r === 0;
     return [
-      { title: t("insertRowAbove"), icon: "arrow-up-to-line", disabled: head, run: () => this.apply(insertRow(tb, p.r), p) },
-      { title: t("insertRowBelow"), icon: "arrow-down-to-line", run: () => this.apply(insertRow(tb, p.r + 1), { r: p.r + 1, c: p.c }) },
+      ...this.insertRowItems(p),
+      { title: t("duplicateRow"), icon: "copy-plus", disabled: head, run: () => this.apply(duplicateRow(tb, p.r), { r: p.r + 1, c: p.c }) },
       { separator: true },
       { title: t("moveRowUp"), icon: "arrow-up", disabled: p.r <= 1, run: () => this.apply(moveRow(tb, p.r, p.r - 1), { r: p.r - 1, c: p.c }) },
       { title: t("moveRowDown"), icon: "arrow-down", disabled: head || p.r >= rowCount(tb) - 1, run: () => this.apply(moveRow(tb, p.r, p.r + 1), { r: p.r + 1, c: p.c }) },
@@ -1305,8 +1632,11 @@ export class TableEditor {
   private colMenu(p: Pos): MenuItem[] {
     const tb = this.table;
     return [
-      { title: t("insertColLeft"), icon: "arrow-left-to-line", run: () => this.apply(insertCol(tb, p.c), p) },
-      { title: t("insertColRight"), icon: "arrow-right-to-line", run: () => this.apply(insertCol(tb, p.c + 1), { r: p.r, c: p.c + 1 }) },
+      ...this.insertColItems(p),
+      { title: t("duplicateCol"), icon: "copy-plus", run: () => this.apply(duplicateCol(tb, p.c), { r: p.r, c: p.c + 1 }) },
+      { separator: true },
+      { title: t("sortAsc"), icon: "arrow-down-a-z", disabled: !canSortRows(tb), run: () => this.apply(sortRows(tb, p.c, false, this.hasTotalRow()), p) },
+      { title: t("sortDesc"), icon: "arrow-up-z-a", disabled: !canSortRows(tb), run: () => this.apply(sortRows(tb, p.c, true, this.hasTotalRow()), p) },
       { separator: true },
       { title: t("moveColLeft"), icon: "arrow-left", disabled: p.c === 0, run: () => this.apply(moveCol(tb, p.c, p.c - 1), { r: p.r, c: p.c - 1 }) },
       { title: t("moveColRight"), icon: "arrow-right", disabled: p.c >= colCount(tb) - 1, run: () => this.apply(moveCol(tb, p.c, p.c + 1), { r: p.r, c: p.c + 1 }) },
@@ -1331,10 +1661,8 @@ export class TableEditor {
     const cells = multi ? this.rangeCells() : [p];
     const cols = multi && rect ? Array.from({ length: rect.c2 - rect.c1 + 1 }, (_, i) => rect.c1 + i) : [p.c];
     return [
-      { title: t("insertRowAbove"), icon: "arrow-up-to-line", disabled: p.r === 0, run: () => this.apply(insertRow(tb, p.r), p) },
-      { title: t("insertRowBelow"), icon: "arrow-down-to-line", run: () => this.apply(insertRow(tb, (merged?.r2 ?? p.r) + 1), { r: (merged?.r2 ?? p.r) + 1, c: p.c }) },
-      { title: t("insertColLeft"), icon: "arrow-left-to-line", run: () => this.apply(insertCol(tb, p.c), p) },
-      { title: t("insertColRight"), icon: "arrow-right-to-line", run: () => this.apply(insertCol(tb, (merged?.c2 ?? p.c) + 1), { r: p.r, c: (merged?.c2 ?? p.c) + 1 }) },
+      ...this.insertRowItems(p, merged?.r2),
+      ...this.insertColItems(p, merged?.c2),
       { separator: true },
       ...mergeItems,
       ...(mergeItems.length ? [{ separator: true }] : []),
@@ -1342,10 +1670,44 @@ export class TableEditor {
       { separator: true },
       ...this.colorItems(cells),
       { separator: true },
+      { title: CHECK_RE.test(tb.cells[p.r][p.c]) ? t("removeCheckbox") : t("addCheckbox"), icon: "square-check", disabled: multi, run: () => this.apply(setCell(tb, p.r, p.c, CHECK_RE.test(tb.cells[p.r][p.c]) ? tb.cells[p.r][p.c].replace(CHECK_RE, "").trimStart() : `[ ] ${tb.cells[p.r][p.c]}`.trimEnd()), p) },
       { title: t("clearCell"), icon: "eraser", disabled: !cells.some((c) => tb.cells[c.r][c.c]), run: () => this.apply(clearCells(tb, cells), this.sel ?? p) },
       { title: t("deleteRow"), icon: "trash-2", danger: true, disabled: p.r === 0 || rowCount(tb) <= 2 || multi, run: () => this.apply(deleteRow(tb, p.r), { r: Math.min(p.r, rowCount(tb) - 2), c: p.c }) },
       { title: t("deleteCol"), icon: "trash-2", danger: true, disabled: colCount(tb) <= 1 || multi, run: () => this.apply(deleteCol(tb, p.c), { r: p.r, c: Math.min(p.c, colCount(tb) - 2) }) },
     ];
+  }
+
+  /** 插入行：选区跨了几行就一次插几行 */
+  private insertRowItems(p: Pos, below = p.r): MenuItem[] {
+    const tb = this.table;
+    const r = this.rangeRect();
+    const k = this.isMulti() && r ? r.r2 - r.r1 + 1 : 1;
+    const top = this.isMulti() && r ? r.r1 : p.r;
+    const bottom = this.isMulti() && r ? r.r2 : below;
+    const n = (key: "insertRowAbove" | "insertRowBelow" | "insertRowsAbove" | "insertRowsBelow") => t(key).replace("{n}", String(k));
+    return [
+      { title: n(k > 1 ? "insertRowsAbove" : "insertRowAbove"), icon: "arrow-up-to-line", disabled: top === 0, run: () => this.apply(insertRows(tb, top, k), { r: top, c: p.c }) },
+      { title: n(k > 1 ? "insertRowsBelow" : "insertRowBelow"), icon: "arrow-down-to-line", run: () => this.apply(insertRows(tb, bottom + 1, k), { r: bottom + 1, c: p.c }) },
+    ];
+  }
+
+  /** 插入列：选区跨了几列就一次插几列 */
+  private insertColItems(p: Pos, right = p.c): MenuItem[] {
+    const tb = this.table;
+    const r = this.rangeRect();
+    const k = this.isMulti() && r ? r.c2 - r.c1 + 1 : 1;
+    const left = this.isMulti() && r ? r.c1 : p.c;
+    const rr = this.isMulti() && r ? r.c2 : right;
+    const n = (key: "insertColLeft" | "insertColRight" | "insertColsLeft" | "insertColsRight") => t(key).replace("{n}", String(k));
+    return [
+      { title: n(k > 1 ? "insertColsLeft" : "insertColLeft"), icon: "arrow-left-to-line", run: () => this.apply(insertCols(tb, left, k), { r: p.r, c: left }) },
+      { title: n(k > 1 ? "insertColsRight" : "insertColRight"), icon: "arrow-right-to-line", run: () => this.apply(insertCols(tb, rr + 1, k), { r: p.r, c: rr + 1 }) },
+    ];
+  }
+
+  /** 有没有合计行（第三批加；先留接口） */
+  private hasTotalRow(): boolean {
+    return false;
   }
 
   /** 对齐（一列或选区里的几列） */

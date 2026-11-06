@@ -1,6 +1,9 @@
 import { type App, getLanguage, MarkdownView, Plugin, PluginSettingTab, Setting } from "obsidian";
 import type { Extension } from "@codemirror/state";
-import { setLanguage } from "./editor/i18n";
+import { setLanguage, t } from "./editor/i18n";
+import { activeTableEditor, TABLE_COMMANDS } from "./editor/editor";
+import { emptyTable, serializeTable } from "./core/table";
+import { GridModal, insertTableText, textToTable } from "./obsidian/insert";
 import { DEFAULT_SETTINGS, makeFactory, type TableHostFactory, type TableSettings } from "./obsidian/host";
 import { livePreviewTables } from "./obsidian/live-preview";
 import { readingProcessor } from "./obsidian/reading";
@@ -22,6 +25,36 @@ export default class TablePlugin extends Plugin {
     this.registerEditorExtension(this.extensions);
     this.registerMarkdownPostProcessor(readingProcessor(this.app, factory));
     this.addSettingTab(new TableSettingTab(this.app, this));
+    // 新建表格、文字转表格
+    this.addCommand({
+      id: "insert-table",
+      name: t("cmd_insertTable"),
+      icon: "table",
+      editorCallback: (editor) => new GridModal(this.app, (r, c) => insertTableText(editor, serializeTable(emptyTable(r, c)))).open(),
+    });
+    this.addCommand({
+      id: "text-to-table",
+      name: t("cmd_textToTable"),
+      editorCheckCallback: (checking, editor) => {
+        const table = textToTable(editor.getSelection());
+        if (!table) return false;
+        if (!checking) editor.replaceSelection(serializeTable(table).join("\n"));
+        return true;
+      },
+    });
+    // 表格操作：作用在最近选中格子的那张表上，可以绑快捷键
+    for (const id of TABLE_COMMANDS) {
+      this.addCommand({
+        id,
+        name: t(`cmd_${id.replace(/-/g, "_")}` as Parameters<typeof t>[0]),
+        checkCallback: (checking) => {
+          const ed = activeTableEditor();
+          if (!ed) return false;
+          if (!checking) ed.runCommand(id);
+          return true;
+        },
+      });
+    }
     // 打开着的笔记重画一遍：已经渲染好的阅读视图不会自己再跑一遍后处理
     this.app.workspace.onLayoutReady(() => this.refresh());
   }

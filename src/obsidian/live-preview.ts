@@ -53,6 +53,7 @@ class TableWidget extends WidgetType {
       onLeave: (where) => leave(view, wrap, where),
     }));
     this.factory.style(editor.root);
+    (wrap as HTMLElement & { ggtCleanup?: () => void }).ggtCleanup = this.factory.attach(editor);
     this.editor = editor;
     (wrap as HTMLElement & { ggtEditor?: TableEditor }).ggtEditor = editor;
     return wrap;
@@ -68,7 +69,8 @@ class TableWidget extends WidgetType {
   }
 
   destroy(dom: HTMLElement): void {
-    const d = dom as HTMLElement & { ggtEditor?: TableEditor; ggtOwner?: Component };
+    const d = dom as HTMLElement & { ggtEditor?: TableEditor; ggtOwner?: Component; ggtCleanup?: () => void };
+    d.ggtCleanup?.();
     d.ggtEditor?.destroy();
     d.ggtOwner?.unload();
   }

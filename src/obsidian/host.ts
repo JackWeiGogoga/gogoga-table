@@ -1,7 +1,8 @@
 /** 实时预览、阅读视图共用：用 Obsidian 的能力（Markdown 渲染、图标、设置）拼出编辑器的宿主 */
 
 import { type App, type Component, MarkdownRenderer, setIcon } from "obsidian";
-import type { EditorHost } from "../editor/editor";
+import type { EditorHost, TableEditor } from "../editor/editor";
+import { guardEditorHotkeys } from "./keys";
 
 export interface TableSettings {
   /** 接管 Markdown 表格（关掉就完全是 Obsidian 原生表格） */
@@ -22,6 +23,8 @@ export interface TableHostFactory {
   host(sourcePath: string, owner: Component, own: Pick<EditorHost, "onChange"> & Partial<EditorHost>): EditorHost;
   /** 把样式预设、行距放到编辑器根元素上 */
   style(root: HTMLElement): void;
+  /** 编辑器挂上以后：接管 Obsidian 的编辑器快捷键等。返回拆掉时调的清理 */
+  attach(editor: TableEditor): () => void;
 }
 
 export function makeFactory(app: App, settings: () => TableSettings): TableHostFactory {
@@ -32,8 +35,25 @@ export function makeFactory(app: App, settings: () => TableSettings): TableHostF
         void MarkdownRenderer.render(app, md, el, sourcePath, owner);
       },
       setIcon: (el, name) => setIcon(el, name),
+      // [[ 补全：笔记按名字找（名字开头的排前面），插的是 Obsidian 生成的最短链接
+      suggestLinks: (query) => {
+        const q = query.toLowerCase();
+        const files = app.vault.getFiles().filter((f) => f.basename.toLowerCase().includes(q));
+        files.sort((a, b) => Number(b.basename.toLowerCase().startsWith(q)) - Number(a.basename.toLowerCase().startsWith(q)) || a.basename.length - b.basename.length);
+        return files.slice(0, 12).map((f) => {
+          const text = app.metadataCache.fileToLinktext(f, sourcePath, true);
+          return text;
+        });
+      },
+      // # 补全：库里已有的标签
+      suggestTags: (query) => {
+        const q = query.toLowerCase();
+        const all = Object.keys((app.metadataCache as unknown as { getTags?: () => Record<string, number> }).getTags?.() ?? {}).map((x) => x.replace(/^#/, ""));
+        return all.filter((x) => x.toLowerCase().includes(q)).sort((a, b) => Number(b.toLowerCase().startsWith(q)) - Number(a.toLowerCase().startsWith(q)) || a.length - b.length).slice(0, 12);
+      },
       ...own,
     }),
+    attach: (editor) => guardEditorHotkeys(app, editor),
     // 设置里的是默认值：表格自己在注释里定了样式就用表格的（编辑器收到 ggt-restyle 后重新套）
     style: (root) => {
       root.dataset.defPreset = settings().preset;

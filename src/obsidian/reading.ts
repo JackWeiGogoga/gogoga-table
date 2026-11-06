@@ -84,6 +84,7 @@ export function readingProcessor(app: App, factory: TableHostFactory) {
       }));
       child.editor = editor;
       factory.style(editor.root);
+      child.register(factory.attach(editor));
     });
   };
 }
