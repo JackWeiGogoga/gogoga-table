@@ -13,8 +13,8 @@
  * 第一下输入就把它变成这一格的编辑框，组字不会被打断。
  */
 
-import { type Align, CELL_COLORS, type CellColor, isDelimiterRow, parseTable, type Rect, type Table } from "../core/table";
-import { bgOf, clearCells, isCovered, colCount, deleteCol, deleteRow, insertCol, insertRow, mergeAt, mergeCells, merges, moveCol, moveRow, pasteGrid, rowCount, setAlign, setBg, setCell, setWidth, unmergeAt, widthOf } from "../core/ops";
+import { type Align, CELL_COLORS, type CellColor, isDelimiterRow, parseTable, type Rect, type Table, TABLE_DENSITIES, TABLE_STYLES, type TableDensity, type TableStyle } from "../core/table";
+import { alignAll, autoWidthAll, bgOf, clearAllBg, clearCells, fillRange, setTableLook, type FillDir, isCovered, colCount, deleteCol, deleteRow, insertCol, insertRow, mergeAt, mergeCells, merges, moveCol, moveRow, pasteGrid, rowCount, setAlign, setBg, setCell, setWidth, unmergeAt, widthOf } from "../core/ops";
 import { fromTSV, toHTML, toTSV } from "../core/clipboard";
 import { t } from "./i18n";
 
@@ -61,8 +61,14 @@ export class TableEditor {
   private readonly tableEl: HTMLTableElement;
   private readonly input: HTMLTextAreaElement;
   private readonly rowHandle: HTMLElement;
+  /** 表格左上角的按钮：这张表的样式、行距、整表对齐…… */
+  private readonly cornerBtn: HTMLElement;
   /** 选了一片时框住整片的蓝框（放在滚动容器里，横向滚动时跟着表格走） */
   private readonly rangeBox: HTMLElement;
+  /** 选区右下角的填充柄（往下 / 往右拖，按规律接着填） */
+  private readonly fillHandle: HTMLElement;
+  /** 拖填充柄时，要填的那一片的虚线框 */
+  private readonly fillPreview: HTMLElement;
   /** 调列宽的线：鼠标靠近任意两列之间的竖线（哪一行都行）时出现，贯穿整张表 */
   private readonly resizeBar: HTMLElement;
   private readonly colHandle: HTMLElement;
@@ -95,6 +101,11 @@ export class TableEditor {
     this.tableEl.className = "ggt-table";
     this.rangeBox = this.scroller.appendChild(doc.createElement("div"));
     this.rangeBox.className = "ggt-range-box";
+    this.fillPreview = this.scroller.appendChild(doc.createElement("div"));
+    this.fillPreview.className = "ggt-fill-preview";
+    this.fillHandle = this.scroller.appendChild(doc.createElement("div"));
+    this.fillHandle.className = "ggt-fill";
+    this.fillHandle.setAttribute("aria-label", t("fill"));
     this.input = doc.createElement("textarea");
     this.input.className = "ggt-input";
     this.input.rows = 1;
@@ -104,6 +115,13 @@ export class TableEditor {
     this.resizeBar.className = "ggt-resize";
     this.resizeBar.setAttribute("aria-label", t("resize"));
     this.rowHandle = this.handle("ggt-row-handle", t("rowMenu"), "grip-vertical");
+    this.cornerBtn = this.root.appendChild(doc.createElement("button"));
+    this.cornerBtn.setAttribute("type", "button");
+    this.cornerBtn.className = "ggt-corner";
+    this.cornerBtn.tabIndex = -1;
+    this.cornerBtn.setAttribute("aria-label", t("tableMenu"));
+    if (this.host.setIcon) this.host.setIcon(this.cornerBtn, "table-2");
+    else this.cornerBtn.textContent = "▦";
     this.colHandle = this.handle("ggt-col-handle", t("colMenu"), "grip-horizontal");
     this.addButton("ggt-add-col", t("addCol"), () => this.apply(insertCol(this.table, colCount(this.table)), { r: this.sel?.r ?? 0, c: colCount(this.table) }));
     this.addButton("ggt-add-row", t("addRow"), () => this.apply(insertRow(this.table, rowCount(this.table)), { r: rowCount(this.table), c: this.sel?.c ?? 0 }));
@@ -202,6 +220,13 @@ export class TableEditor {
     else head.removeAttribute("style");
   }
 
+  /** 样式、行距：这张表自己定了就用它的，否则用宿主给的默认（data-def-*） */
+  private applyLook(): void {
+    const d = this.root.dataset;
+    d.preset = this.table.meta.style ?? d.defPreset ?? "default";
+    d.density = this.table.meta.density ?? d.defDensity ?? "comfortable";
+  }
+
   // ---------- 渲染 ----------
 
   private render(): void {
@@ -213,6 +238,7 @@ export class TableEditor {
     if (this.sel) this.sel = this.canon({ r: Math.min(this.sel.r, rows - 1), c: Math.min(this.sel.c, cols - 1) });
     if (this.anchor) this.anchor = { r: Math.min(this.anchor.r, rows - 1), c: Math.min(this.anchor.c, cols - 1) };
     const ms = merges(tb);
+    this.applyLook();
     this.tableEl.replaceChildren();
     const colgroup = this.tableEl.appendChild(doc.createElement("colgroup"));
     for (let c = 0; c < cols; c++) {
@@ -311,6 +337,30 @@ export class TableEditor {
     return out;
   }
 
+  /** 选区（或选中的一格）在滚动容器里的位置 */
+  private selBox(): { x: number; y: number; w: number; h: number } | null {
+    const r = this.rangeRect();
+    if (!r) return null;
+    let box: { l: number; t: number; r: number; b: number } | null = null;
+    for (const el of Array.from(this.tableEl.querySelectorAll<HTMLElement>(".ggt-cell"))) {
+      const er = Number(el.dataset.r);
+      const ec = Number(el.dataset.c);
+      if (er < r.r1 || er > r.r2 || ec < r.c1 || ec > r.c2) continue;
+      const b = el.getBoundingClientRect();
+      box = box ? { l: Math.min(box.l, b.left), t: Math.min(box.t, b.top), r: Math.max(box.r, b.right), b: Math.max(box.b, b.bottom) } : { l: b.left, t: b.top, r: b.right, b: b.bottom };
+    }
+    if (!box) return null;
+    const base = this.scroller.getBoundingClientRect();
+    return { x: box.l - base.left + this.scroller.scrollLeft, y: box.t - base.top + this.scroller.scrollTop, w: box.r - box.l, h: box.b - box.t };
+  }
+
+  /** 填充柄放在选区右下角；没选中、在编辑、只读时不显示 */
+  private placeFill(): void {
+    const box = !this.editing && !this.host.readonly ? this.selBox() : null;
+    this.fillHandle.classList.toggle("is-shown", !!box);
+    if (box) this.fillHandle.setAttribute("style", `left:${box.x + box.w - 4}px;top:${box.y + box.h - 4}px`);
+  }
+
   private markSel(): void {
     for (const el of Array.from(this.tableEl.querySelectorAll(".is-selected, .is-sel-head, .is-in-range"))) el.classList.remove("is-selected", "is-sel-head", "is-in-range");
     this.root.classList.toggle("has-range", this.isMulti());
@@ -345,6 +395,7 @@ export class TableEditor {
     }
     cell.classList.add("is-selected");
     if (this.sel.r > 0) this.cellEl({ r: 0, c: this.sel.c })?.classList.add("is-sel-head");
+    this.placeFill();
     // 看不见的输入框放进选中的格子里：打字、组字从这里开始
     if (this.input.parentElement !== cell) cell.appendChild(this.input);
     this.placeHandles();
@@ -379,6 +430,7 @@ export class TableEditor {
     }
     this.editing = true;
     cell.classList.add("is-editing");
+    this.fillHandle.classList.remove("is-shown");
     if (keep) {
       this.input.value = this.table.cells[this.sel.r][this.sel.c];
       const end = this.input.value.length;
@@ -554,6 +606,20 @@ export class TableEditor {
       this.openMenu(this.cellMenu(inRange && this.sel ? this.sel : p), ev.clientX, ev.clientY);
     });
     this.on(this.resizeBar, "pointerdown", (ev) => this.startResize(ev, this.resizeBar));
+    this.on(this.fillHandle, "pointerdown", (ev) => this.fillDrag(ev));
+    // 宿主改了默认样式（设置变了）
+    this.on(this.root, "ggt-restyle" as keyof HTMLElementEventMap, () => this.applyLook());
+    this.on(this.cornerBtn, "pointerdown", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+    });
+    this.on(this.cornerBtn, "click", (ev) => {
+      ev.preventDefault();
+      if (this.host.readonly) return;
+      if (this.editing) this.commit();
+      const rect = this.cornerBtn.getBoundingClientRect();
+      this.openMenu(this.tableMenu(), rect.left, rect.bottom + 4);
+    });
     this.on(this.resizeBar, "dblclick", (ev) => {
       ev.preventDefault();
       const c = Number(this.resizeBar.dataset.c);
@@ -728,6 +794,102 @@ export class TableEditor {
     void ev;
   }
 
+  // ---------- 下拉填充 ----------
+
+  /** 按住填充柄往下 / 上 / 左 / 右拖：虚线框出要填的地方，松开按规律填上，拖出表格就加行加列 */
+  private fillDrag(ev: PointerEvent): void {
+    const src = this.rangeRect();
+    if (!src || this.host.readonly) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const handle = this.fillHandle;
+    try {
+      handle.setPointerCapture(ev.pointerId);
+    } catch {
+      // 合成事件
+    }
+    this.root.classList.add("is-filling");
+    const state: { plan: { dir: FillDir; count: number } | null } = { plan: null };
+    // 每一行、每一列的屏幕位置（表格外面按最后一行 / 列的大小往外推）
+    const rows = Array.from({ length: rowCount(this.table) }, (_, r) => this.lineBox(r, true));
+    const cols = Array.from({ length: colCount(this.table) }, (_, c) => this.lineBox(c, false));
+    const indexAt = (v: number, lines: { a: number; b: number }[]) => {
+      for (let i = 0; i < lines.length; i++) if (v < lines[i].b) return i;
+      const last = lines[lines.length - 1];
+      return lines.length - 1 + Math.ceil((v - last.b) / Math.max(20, last.b - last.a));
+    };
+    const move = (e: PointerEvent) => {
+      const r = indexAt(e.clientY, rows);
+      const c = indexAt(e.clientX, cols);
+      const down = r - src.r2;
+      const up = src.r1 - r;
+      const right = c - src.c2;
+      const left = src.c1 - c;
+      const best = Math.max(down, up, right, left);
+      state.plan = best <= 0 ? null : best === down ? { dir: "down", count: down } : best === right ? { dir: "right", count: right } : best === up ? { dir: "up", count: up } : { dir: "left", count: left };
+      this.showFillPreview(src, state.plan, rows, cols);
+    };
+    const up = () => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", up);
+      handle.removeEventListener("pointercancel", cancel);
+      this.root.classList.remove("is-filling");
+      this.fillPreview.classList.remove("is-shown");
+      const p = state.plan;
+      if (!p) return;
+      const { table, filled } = fillRange(this.table, src, p.dir, p.count);
+      if (table === this.table) return;
+      // 填完选中整片（原来的 + 填上的）
+      this.apply(table, { r: filled.r2, c: filled.c2 });
+      this.anchor = { r: filled.r1, c: filled.c1 };
+      this.markSel();
+    };
+    const cancel = () => {
+      state.plan = null;
+      up();
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", up);
+    handle.addEventListener("pointercancel", cancel);
+  }
+
+  /** 第 i 行（或列）在屏幕上的起止 */
+  private lineBox(i: number, row: boolean): { a: number; b: number } {
+    if (row) {
+      const tr = this.tableEl.rows[i];
+      const b = tr?.getBoundingClientRect();
+      return b ? { a: b.top, b: b.bottom } : { a: 0, b: 0 };
+    }
+    const b = this.tableEl.querySelectorAll("col")[i]?.getBoundingClientRect();
+    return b ? { a: b.left, b: b.right } : { a: 0, b: 0 };
+  }
+
+  private showFillPreview(src: Rect, plan: { dir: FillDir; count: number } | null, rows: { a: number; b: number }[], cols: { a: number; b: number }[]): void {
+    const pv = this.fillPreview;
+    if (!plan) {
+      pv.classList.remove("is-shown");
+      return;
+    }
+    const ext = (lines: { a: number; b: number }[], i: number) => {
+      if (i < lines.length && i >= 0) return lines[i];
+      const last = lines[lines.length - 1];
+      const size = Math.max(20, last.b - last.a);
+      const k = i - (lines.length - 1);
+      return { a: last.b + (k - 1) * size, b: last.b + k * size };
+    };
+    const r1 = plan.dir === "up" ? src.r1 - plan.count : plan.dir === "down" ? src.r2 + 1 : src.r1;
+    const r2 = plan.dir === "down" ? src.r2 + plan.count : plan.dir === "up" ? src.r1 - 1 : src.r2;
+    const c1 = plan.dir === "left" ? src.c1 - plan.count : plan.dir === "right" ? src.c2 + 1 : src.c1;
+    const c2 = plan.dir === "right" ? src.c2 + plan.count : plan.dir === "left" ? src.c1 - 1 : src.c2;
+    const top = ext(rows, Math.max(0, r1)).a;
+    const bottom = ext(rows, r2).b;
+    const left = ext(cols, Math.max(0, c1)).a;
+    const right = ext(cols, c2).b;
+    const base = this.scroller.getBoundingClientRect();
+    pv.setAttribute("style", `left:${left - base.left + this.scroller.scrollLeft}px;top:${top - base.top + this.scroller.scrollTop}px;width:${right - left}px;height:${bottom - top}px`);
+    pv.classList.add("is-shown");
+  }
+
   // ---------- 复制粘贴 ----------
 
   /** 选区里的内容（被合并盖住的格子是空的） */
@@ -825,7 +987,10 @@ export class TableEditor {
     const t = this.tableEl.getBoundingClientRect();
     let hit = -1;
     let at = 0;
-    if (y >= t.top && y <= t.bottom && !this.root.classList.contains("is-dragging")) {
+    // 指针在填充柄上：那是拖填充，不是调列宽（填充柄正好在选区右下角的列边线上）
+    const fb = this.fillHandle.classList.contains("is-shown") ? this.fillHandle.getBoundingClientRect() : null;
+    const onFill = !!fb && x >= fb.left - 4 && x <= fb.right + 4 && y >= fb.top - 4 && y <= fb.bottom + 4;
+    if (!onFill && y >= t.top && y <= t.bottom && !this.root.classList.contains("is-dragging")) {
       // 指针所在的格子：合并格跨了几列，它里面的列分界线不能拖（点在合并格中间是点格子）
       const under = Array.from(this.tableEl.querySelectorAll<HTMLTableCellElement>(".ggt-cell")).find((el) => {
         const b = el.getBoundingClientRect();
@@ -1037,6 +1202,11 @@ export class TableEditor {
 
   /** 行手柄放在悬停（或选中）那一行的左边框上，列手柄放在那一列的上边框上 */
   private placeHandles(): void {
+    {
+      const base = this.root.getBoundingClientRect();
+      const tr = this.tableEl.getBoundingClientRect();
+      this.cornerBtn.setAttribute("style", `left:${tr.left - base.left}px;top:${tr.top - base.top}px`);
+    }
     const p = this.hover ?? this.sel;
     const show = !!p && !this.host.readonly && !this.resize;
     this.rowHandle.classList.toggle("is-shown", show);
@@ -1061,6 +1231,44 @@ export class TableEditor {
   }
 
   // ---------- 菜单 ----------
+
+  /** 整张表的菜单（左上角按钮） */
+  private tableMenu(): MenuItem[] {
+    const tb = this.table;
+    const keep = (next: Table) => this.applyKeepRange(next);
+    const look = (style: TableStyle | null): MenuItem => ({
+      title: style ? t(`style_${style}`) : t("followSettings"),
+      checked: (tb.meta.style ?? null) === style,
+      run: () => keep(setTableLook(this.table, { style })),
+    });
+    const dens = (density: TableDensity | null): MenuItem => ({
+      title: density ? t(`density_${density}`) : t("followSettings"),
+      checked: (tb.meta.density ?? null) === density,
+      run: () => keep(setTableLook(this.table, { density })),
+    });
+    const align = (a: Align, title: string, icon: string): MenuItem => ({
+      title,
+      icon,
+      checked: tb.align.every((x) => (x ?? "left") === a),
+      run: () => keep(alignAll(this.table, a)),
+    });
+    return [
+      { title: t("tableStyle") },
+      look(null),
+      ...TABLE_STYLES.map((x) => look(x)),
+      { separator: true },
+      { title: t("rowSpacing") },
+      dens(null),
+      ...TABLE_DENSITIES.map((x) => dens(x)),
+      { separator: true },
+      align("left", t("alignAllLeft"), "align-left"),
+      align("center", t("alignAllCenter"), "align-center"),
+      align("right", t("alignAllRight"), "align-right"),
+      { separator: true },
+      { title: t("autoWidthAll"), icon: "move-horizontal", disabled: !tb.meta.w?.some((x) => x != null), run: () => keep(autoWidthAll(this.table)) },
+      { title: t("clearAllBg"), icon: "paintbrush", disabled: !tb.meta.bg || !Object.keys(tb.meta.bg).length, run: () => keep(clearAllBg(this.table)) },
+    ];
+  }
 
   private rowMenu(p: Pos): MenuItem[] {
     const tb = this.table;

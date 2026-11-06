@@ -24,7 +24,8 @@
 }
 .ggt[data-density="compact"] { --ggt-pad-y: 3px; --ggt-pad-x: 8px; }
 
-.ggt-scroll { overflow-x: auto; overflow-y: visible; }
+/* 右边、下边留几像素：骑在表格右下角的填充柄、选区框不会被滚动容器裁掉 */
+.ggt-scroll { overflow-x: auto; overflow-y: visible; padding: 0 6px 6px 0; margin: 0 -6px -6px 0; }
 .ggt-table {
   border-collapse: separate;
   border-spacing: 0;
@@ -291,3 +292,20 @@
 /* 表头的行手柄拖不动，只能点开菜单 */
 .ggt button.ggt-row-handle.is-fixed { cursor: pointer; }
 .ggt.has-range .ggt-cell.is-sel-head { background-image: none; }
+
+/* 下拉填充：选区右下角的小方块，拖动时虚线框出要填的地方 */
+.ggt-fill { position: absolute; z-index: 6; display: none; width: 8px; height: 8px; box-sizing: border-box; border: 1.5px solid var(--background-primary); border-radius: 2px; background: var(--ggt-sel); cursor: crosshair; touch-action: none; }
+.ggt-fill.is-shown { display: block; }
+.ggt-fill::before { content: ""; position: absolute; inset: -6px; }
+.is-mobile .ggt-fill { width: 14px; height: 14px; border-radius: 4px; }
+.ggt-fill-preview { position: absolute; z-index: 3; display: none; border: 1.5px dashed var(--ggt-sel); border-radius: 2px; pointer-events: none; box-sizing: border-box; }
+.ggt-fill-preview.is-shown { display: block; }
+.ggt.is-filling, .ggt.is-filling * { cursor: crosshair !important; user-select: none; }
+
+/* 表格左上角的按钮：鼠标在表格上时出现，点开是整张表的设置 */
+.ggt button.ggt-corner { position: absolute; z-index: 4; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; transform: translate(-50%, -50%); border: 1px solid var(--ggt-line); border-radius: 6px; background: var(--background-primary); color: var(--text-muted); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06); cursor: pointer; opacity: 0; pointer-events: none; transition: opacity 0.12s; }
+.ggt:hover button.ggt-corner, .ggt button.ggt-corner:focus-visible { opacity: 1; pointer-events: auto; }
+.ggt button.ggt-corner:hover { color: var(--text-normal); border-color: var(--ggt-sel); }
+.ggt button.ggt-corner svg { width: 14px; height: 14px; }
+.is-mobile .ggt button.ggt-corner { opacity: 1; pointer-events: auto; width: 28px; height: 28px; }
+.ggt.is-readonly button.ggt-corner { display: none; }

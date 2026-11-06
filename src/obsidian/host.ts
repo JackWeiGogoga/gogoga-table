@@ -34,9 +34,11 @@ export function makeFactory(app: App, settings: () => TableSettings): TableHostF
       setIcon: (el, name) => setIcon(el, name),
       ...own,
     }),
+    // 设置里的是默认值：表格自己在注释里定了样式就用表格的（编辑器收到 ggt-restyle 后重新套）
     style: (root) => {
-      root.dataset.preset = settings().preset;
-      root.dataset.density = settings().density;
+      root.dataset.defPreset = settings().preset;
+      root.dataset.defDensity = settings().density;
+      root.dispatchEvent(new Event("ggt-restyle"));
     },
   };
 }

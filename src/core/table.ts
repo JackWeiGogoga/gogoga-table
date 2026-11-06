@@ -17,6 +17,11 @@ export type Align = "left" | "center" | "right" | null;
 export const CELL_COLORS = ["gray", "red", "orange", "yellow", "green", "blue", "purple"] as const;
 export type CellColor = (typeof CELL_COLORS)[number];
 
+export const TABLE_STYLES = ["default", "zebra", "minimal"] as const;
+export type TableStyle = (typeof TABLE_STYLES)[number];
+export const TABLE_DENSITIES = ["comfortable", "compact"] as const;
+export type TableDensity = (typeof TABLE_DENSITIES)[number];
+
 export interface TableMeta {
   /** 每列宽度（像素），null 是自动 */
   w?: (number | null)[];
@@ -24,6 +29,9 @@ export interface TableMeta {
   bg?: Record<string, CellColor>;
   /** 合并的格子：每项是 "A3:B4" 这样的矩形，左上角那格的内容代表整块 */
   merge?: string[];
+  /** 这张表自己的样式、行距（不写就跟着设置走） */
+  style?: TableStyle;
+  density?: TableDensity;
   /** 不认识的键原样保留，新版本加的东西旧版本不会弄丢 */
   [key: string]: unknown;
 }
@@ -150,6 +158,8 @@ function sanitizeMeta(raw: Record<string, unknown>): TableMeta {
     if (Object.keys(bg).length) meta.bg = bg;
     else delete meta.bg;
   }
+  if (raw.style !== undefined && !(TABLE_STYLES as readonly unknown[]).includes(raw.style)) delete meta.style;
+  if (raw.density !== undefined && !(TABLE_DENSITIES as readonly unknown[]).includes(raw.density)) delete meta.density;
   if (raw.merge !== undefined) {
     const merge = Array.isArray(raw.merge) ? raw.merge.filter((m): m is string => typeof m === "string" && parseRange(m) !== null) : [];
     if (merge.length) meta.merge = merge;

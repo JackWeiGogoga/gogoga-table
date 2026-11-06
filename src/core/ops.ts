@@ -3,7 +3,8 @@
  * 增删、移动行列时，注释里按坐标记的东西（底色）和按列记的东西（列宽）跟着挪。
  */
 
-import { type Align, type CellColor, cellRef, parseRange, parseRef, rangeRef, type Rect, type Table, type TableMeta } from "./table";
+import { type Align, type CellColor, cellRef, parseRange, parseRef, rangeRef, type Rect, type Table, type TableDensity, type TableMeta, type TableStyle } from "./table";
+import { fillSeries } from "./fill";
 
 export function cloneTable(t: Table): Table {
   return {
@@ -281,5 +282,80 @@ export function pasteGrid(t: Table, r: number, c: number, grid: readonly (readon
   while (rowCount(n) < r + grid.length) n = insertRow(n, rowCount(n));
   while (colCount(n) < c + width) n = insertCol(n, colCount(n));
   grid.forEach((row, i) => row.forEach((v, j) => (n.cells[r + i][c + j] = v)));
+  return n;
+}
+
+// ---------- 下拉填充 ----------
+
+export type FillDir = "down" | "up" | "right" | "left";
+
+/**
+ * 把选区 src 往 dir 方向填 count 格：每一列（上下填）或每一行（左右填）各自按 fillSeries 推值。
+ * 往下 / 往右超出表格就加行加列；往上填不进表头（除非选区本身就从表头开始）
+ */
+export function fillRange(t: Table, src: Rect, dir: FillDir, count: number): { table: Table; filled: Rect } {
+  let n = cloneTable(t);
+  const vertical = dir === "down" || dir === "up";
+  let cnt = count;
+  if (dir === "up") cnt = Math.min(count, src.r1 - (src.r1 > 0 ? 1 : 0));
+  if (dir === "left") cnt = Math.min(count, src.c1);
+  if (cnt <= 0) return { table: t, filled: src };
+  if (dir === "down") while (rowCount(n) < src.r2 + 1 + cnt) n = insertRow(n, rowCount(n));
+  if (dir === "right") while (colCount(n) < src.c2 + 1 + cnt) n = insertCol(n, colCount(n));
+  if (vertical) {
+    for (let c = src.c1; c <= src.c2; c++) {
+      const source: string[] = [];
+      for (let r = src.r1; r <= src.r2; r++) source.push(n.cells[r][c]);
+      const vals = fillSeries(source, cnt, dir === "up");
+      vals.forEach((v, k) => (n.cells[dir === "down" ? src.r2 + 1 + k : src.r1 - 1 - k][c] = v));
+    }
+  } else {
+    for (let r = src.r1; r <= src.r2; r++) {
+      const source = n.cells[r].slice(src.c1, src.c2 + 1);
+      const vals = fillSeries(source, cnt, dir === "left");
+      vals.forEach((v, k) => (n.cells[r][dir === "right" ? src.c2 + 1 + k : src.c1 - 1 - k] = v));
+    }
+  }
+  const filled: Rect =
+    dir === "down" ? { ...src, r2: src.r2 + cnt } : dir === "up" ? { ...src, r1: src.r1 - cnt } : dir === "right" ? { ...src, c2: src.c2 + cnt } : { ...src, c1: src.c1 - cnt };
+  return { table: n, filled };
+}
+
+// ---------- 整张表 ----------
+
+/** 这张表自己的样式 / 行距；null 是跟着设置走 */
+export function setTableLook(t: Table, look: { style?: TableStyle | null; density?: TableDensity | null }): Table {
+  const n = cloneTable(t);
+  if (look.style !== undefined) {
+    if (look.style) n.meta.style = look.style;
+    else delete n.meta.style;
+  }
+  if (look.density !== undefined) {
+    if (look.density) n.meta.density = look.density;
+    else delete n.meta.density;
+  }
+  return n;
+}
+
+/** 整表对齐 */
+export function alignAll(t: Table, a: Align): Table {
+  const n = cloneTable(t);
+  n.align = n.align.map(() => a);
+  return n;
+}
+
+/** 去掉所有底色 */
+export function clearAllBg(t: Table): Table {
+  if (!t.meta.bg || !Object.keys(t.meta.bg).length) return t;
+  const n = cloneTable(t);
+  delete n.meta.bg;
+  return n;
+}
+
+/** 所有列恢复自动宽度 */
+export function autoWidthAll(t: Table): Table {
+  if (!t.meta.w?.some((x) => x != null)) return t;
+  const n = cloneTable(t);
+  delete n.meta.w;
   return n;
 }
