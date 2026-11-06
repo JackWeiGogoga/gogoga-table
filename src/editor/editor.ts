@@ -13,8 +13,9 @@
  * 第一下输入就把它变成这一格的编辑框，组字不会被打断。
  */
 
-import { type Align, CELL_COLORS, type CellColor, type Table } from "../core/table";
-import { bgOf, colCount, deleteCol, deleteRow, insertCol, insertRow, moveCol, moveRow, rowCount, setAlign, setBg, setCell, setWidth, widthOf } from "../core/ops";
+import { type Align, CELL_COLORS, type CellColor, isDelimiterRow, parseTable, type Rect, type Table } from "../core/table";
+import { bgOf, clearCells, colCount, deleteCol, deleteRow, insertCol, insertRow, mergeAt, mergeCells, merges, moveCol, moveRow, pasteGrid, rowCount, setAlign, setBg, setCell, setWidth, unmergeAt, widthOf } from "../core/ops";
+import { fromTSV, toHTML, toTSV } from "../core/clipboard";
 import { t } from "./i18n";
 
 export interface MenuItem {
@@ -62,6 +63,8 @@ export class TableEditor {
   private readonly rowHandle: HTMLElement;
   private readonly colHandle: HTMLElement;
   private sel: Pos | null = null;
+  /** 多格选区的另一头（拖选、Shift）；null 是只选了一格 */
+  private anchor: Pos | null = null;
   private editing = false;
   /** 编辑时宿主送来的新表：等这一格改完再换上 */
   private pending: Table | null = null;
@@ -99,6 +102,7 @@ export class TableEditor {
     parent.appendChild(this.root);
     this.bind();
     this.render();
+    this.watchScroll();
   }
 
   // ---------- 对外 ----------
@@ -137,6 +141,58 @@ export class TableEditor {
     this.root.remove();
   }
 
+  // ---------- 表头吸顶、横向滚动阴影 ----------
+
+  /** 往上找会滚动的容器（编辑器、阅读视图），表头在表格滚出它顶端时贴着顶端 */
+  private watchScroll(): void {
+    const win = this.root.ownerDocument.defaultView ?? window;
+    const update = () => {
+      if (this.destroyed) return;
+      const sc = this.scroller;
+      this.root.classList.toggle("can-left", sc.scrollLeft > 1);
+      this.root.classList.toggle("can-right", sc.scrollLeft + sc.clientWidth < sc.scrollWidth - 1);
+      this.stickHeader();
+    };
+    const onScroll = () => win.requestAnimationFrame(update);
+    this.on(this.scroller, "scroll", onScroll, { passive: true });
+    // 外面的滚动容器要等挂到文档上才找得到
+    win.requestAnimationFrame(() => {
+      for (let el = this.root.parentElement; el; el = el.parentElement) {
+        const oy = win.getComputedStyle(el).overflowY;
+        if (oy === "auto" || oy === "scroll") {
+          this.outer = el;
+          el.addEventListener("scroll", onScroll, { passive: true });
+          this.cleanups.push(() => el.removeEventListener("scroll", onScroll));
+          break;
+        }
+      }
+      update();
+    });
+    const ro = new win.ResizeObserver(onScroll);
+    ro.observe(this.scroller);
+    this.cleanups.push(() => ro.disconnect());
+  }
+
+  private outer: HTMLElement | null = null;
+
+  private stickHeader(): void {
+    const head = this.tableEl.tHead;
+    if (!head) return;
+    const outer = this.outer;
+    let offset = 0;
+    if (outer) {
+      const top = outer.getBoundingClientRect().top;
+      const t = this.tableEl.getBoundingClientRect();
+      const h = head.getBoundingClientRect().height;
+      // 表格顶端滚出去了、底部还在：表头往下挪，贴着容器顶端；表格快滚完时跟着走
+      if (t.top < top && t.bottom - h > top) offset = Math.min(top - t.top, t.height - h * 2);
+    }
+    const stuck = offset > 0;
+    this.root.classList.toggle("is-stuck", stuck);
+    if (stuck) head.setAttribute("style", `transform: translateY(${Math.round(offset)}px)`);
+    else head.removeAttribute("style");
+  }
+
   // ---------- 渲染 ----------
 
   private render(): void {
@@ -145,7 +201,9 @@ export class TableEditor {
     const tb = this.table;
     const rows = rowCount(tb);
     const cols = colCount(tb);
-    if (this.sel) this.sel = { r: Math.min(this.sel.r, rows - 1), c: Math.min(this.sel.c, cols - 1) };
+    if (this.sel) this.sel = this.canon({ r: Math.min(this.sel.r, rows - 1), c: Math.min(this.sel.c, cols - 1) });
+    if (this.anchor) this.anchor = { r: Math.min(this.anchor.r, rows - 1), c: Math.min(this.anchor.c, cols - 1) };
+    const ms = merges(tb);
     this.tableEl.replaceChildren();
     const colgroup = this.tableEl.appendChild(doc.createElement("colgroup"));
     for (let c = 0; c < cols; c++) {
@@ -158,8 +216,16 @@ export class TableEditor {
     for (let r = 0; r < rows; r++) {
       const tr = (r === 0 ? thead : tbody).appendChild(doc.createElement("tr"));
       for (let c = 0; c < cols; c++) {
+        // 合并的格子：左上角那格跨行跨列，其余不画
+        const m = ms.find((x) => r >= x.r1 && r <= x.r2 && c >= x.c1 && c <= x.c2);
+        if (m && (m.r1 !== r || m.c1 !== c)) continue;
         const cell = tr.appendChild(doc.createElement(r === 0 ? "th" : "td"));
         cell.className = "ggt-cell";
+        if (m) {
+          cell.colSpan = m.c2 - m.c1 + 1;
+          cell.rowSpan = m.r2 - m.r1 + 1;
+          cell.classList.add("is-merged");
+        }
         cell.dataset.r = String(r);
         cell.dataset.c = String(c);
         const a = tb.align[c];
@@ -179,6 +245,7 @@ export class TableEditor {
     }
     this.markSel();
     if (hadFocus && this.sel) this.input.focus({ preventScroll: true });
+    this.stickHeader();
   }
 
   private fill(el: HTMLElement, md: string): void {
@@ -192,12 +259,65 @@ export class TableEditor {
     else el.textContent = md;
   }
 
+  /** 格子元素；落在合并区域里的取左上角那格 */
   private cellEl(p: Pos): HTMLElement | null {
-    return this.tableEl.querySelector<HTMLElement>(`.ggt-cell[data-r="${p.r}"][data-c="${p.c}"]`);
+    const q = this.canon(p);
+    return this.tableEl.querySelector<HTMLElement>(`.ggt-cell[data-r="${q.r}"][data-c="${q.c}"]`);
+  }
+
+  /** 落在合并区域里的位置换成左上角 */
+  private canon(p: Pos): Pos {
+    const m = mergeAt(this.table, p.r, p.c);
+    return m ? { r: m.r1, c: m.c1 } : p;
+  }
+
+  /** 选区矩形（碰到的合并区域整块算进来）；没选中是 null */
+  private rangeRect(): Rect | null {
+    if (!this.sel) return null;
+    const a = this.anchor ?? this.sel;
+    let r: Rect = { r1: Math.min(a.r, this.sel.r), c1: Math.min(a.c, this.sel.c), r2: Math.max(a.r, this.sel.r), c2: Math.max(a.c, this.sel.c) };
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const m of merges(this.table)) {
+        const hit = m.r1 <= r.r2 && r.r1 <= m.r2 && m.c1 <= r.c2 && r.c1 <= m.c2;
+        if (hit && (m.r1 < r.r1 || m.c1 < r.c1 || m.r2 > r.r2 || m.c2 > r.c2)) {
+          r = { r1: Math.min(r.r1, m.r1), c1: Math.min(r.c1, m.c1), r2: Math.max(r.r2, m.r2), c2: Math.max(r.c2, m.c2) };
+          grew = true;
+        }
+      }
+    }
+    return r;
+  }
+
+  /** 选了不止一格（一整块合并的格子算一格） */
+  private isMulti(): boolean {
+    const r = this.rangeRect();
+    if (!r || (r.r1 === r.r2 && r.c1 === r.c2)) return false;
+    const m = mergeAt(this.table, r.r1, r.c1);
+    return !(m && m.r1 === r.r1 && m.c1 === r.c1 && m.r2 === r.r2 && m.c2 === r.c2);
+  }
+
+  /** 选区里的所有格子（含被合并盖住的） */
+  private rangeCells(): Pos[] {
+    const r = this.rangeRect();
+    if (!r) return [];
+    const out: Pos[] = [];
+    for (let i = r.r1; i <= r.r2; i++) for (let j = r.c1; j <= r.c2; j++) out.push({ r: i, c: j });
+    return out;
   }
 
   private markSel(): void {
-    for (const el of Array.from(this.tableEl.querySelectorAll(".is-selected, .is-sel-head"))) el.classList.remove("is-selected", "is-sel-head");
+    for (const el of Array.from(this.tableEl.querySelectorAll(".is-selected, .is-sel-head, .is-in-range"))) el.classList.remove("is-selected", "is-sel-head", "is-in-range");
+    this.root.classList.toggle("has-range", this.isMulti());
+    if (this.isMulti()) {
+      const r = this.rangeRect();
+      if (r)
+        for (const el of Array.from(this.tableEl.querySelectorAll<HTMLElement>(".ggt-cell"))) {
+          const er = Number(el.dataset.r);
+          const ec = Number(el.dataset.c);
+          if (er >= r.r1 && er <= r.r2 && ec >= r.c1 && ec <= r.c2) el.classList.add("is-in-range");
+        }
+    }
     const cell = this.sel && this.cellEl(this.sel);
     if (!cell || !this.sel) {
       this.input.remove();
@@ -213,9 +333,13 @@ export class TableEditor {
 
   // ---------- 选中、编辑 ----------
 
-  private setSel(p: Pos | null, focus: boolean): void {
+  /** extend：保留选区的另一头（Shift、拖选），否则只选这一格 */
+  private setSel(p: Pos | null, focus: boolean, extend = false): void {
     if (this.editing) this.commit();
-    this.sel = p;
+    if (extend && this.sel && p) this.anchor = this.anchor ?? this.sel;
+    else this.anchor = null;
+    this.sel = p && this.canon(p);
+    if (this.anchor && this.sel && this.anchor.r === this.sel.r && this.anchor.c === this.sel.c) this.anchor = null;
     this.markSel();
     if (p && focus && !this.host.readonly) {
       this.input.value = "";
@@ -230,6 +354,10 @@ export class TableEditor {
     if (!this.sel || this.host.readonly) return;
     const cell = this.cellEl(this.sel);
     if (!cell) return;
+    if (this.anchor) {
+      this.anchor = null;
+      this.markSel();
+    }
     this.editing = true;
     cell.classList.add("is-editing");
     if (keep) {
@@ -293,6 +421,16 @@ export class TableEditor {
     } else this.restoreContent(this.sel);
   }
 
+  /** 换一张表，选区原样留着（批量设底色、对齐之后可以接着操作） */
+  private applyKeepRange(next: Table): void {
+    const anchor = this.anchor;
+    this.apply(next, this.sel ?? undefined);
+    if (anchor) {
+      this.anchor = anchor;
+      this.markSel();
+    }
+  }
+
   /** 换一张表并交给宿主，选中挪到 sel */
   private apply(next: Table, sel?: Pos): void {
     if (this.editing) this.commit();
@@ -305,11 +443,23 @@ export class TableEditor {
     if (sel) this.setSel(this.sel, true);
   }
 
-  private move(dr: number, dc: number, wrap = false): void {
+  /** 方向键、Tab、Enter 走格；extend 是 Shift+方向键扩大选区。从合并的格子出发时从它的边上走出去 */
+  private move(dr: number, dc: number, wrap = false, extend = false): void {
     if (!this.sel) return;
     const rows = rowCount(this.table);
     const cols = colCount(this.table);
+    const m = mergeAt(this.table, this.sel.r, this.sel.c);
     let { r, c } = this.sel;
+    if (m) {
+      if (dr > 0) r = m.r2;
+      if (dc > 0) c = m.c2;
+    }
+    if (extend) {
+      const nr = Math.max(0, Math.min(rows - 1, r + dr));
+      const nc = Math.max(0, Math.min(cols - 1, c + dc));
+      this.setSel({ r: nr, c: nc }, true, true);
+      return;
+    }
     c += dc;
     if (wrap && c >= cols) {
       c = 0;
@@ -357,8 +507,14 @@ export class TableEditor {
       const p = { r: Number(cell.dataset.r), c: Number(cell.dataset.c) };
       if (ev.pointerType === "touch") return this.touchStart(ev, p);
       ev.preventDefault();
+      if (ev.button !== 0) return;
+      if (ev.shiftKey && this.sel) {
+        this.setSel(p, true, true);
+        return;
+      }
       const same = this.sel && this.sel.r === p.r && this.sel.c === p.c;
       if (!same || !this.editing) this.setSel(p, true);
+      this.dragSelect(ev);
     });
     this.on(this.tableEl, "dblclick", (ev) => {
       const target = ev.target as HTMLElement;
@@ -377,8 +533,12 @@ export class TableEditor {
       // 安卓长按会再来一次右键事件：长按已经开过菜单了
       if (performance.now() - this.longPressAt < 1000) return;
       const p = { r: Number(cell.dataset.r), c: Number(cell.dataset.c) };
-      this.setSel(p, true);
-      this.openMenu(this.cellMenu(p), ev.clientX, ev.clientY);
+      // 右键点在选区里：选区留着，菜单对整片生效
+      const r = this.rangeRect();
+      const inRange = this.isMulti() && r && p.r >= r.r1 && p.r <= r.r2 && p.c >= r.c1 && p.c <= r.c2;
+      if (!inRange) this.setSel(p, true);
+      else this.input.focus({ preventScroll: true });
+      this.openMenu(this.cellMenu(inRange && this.sel ? this.sel : p), ev.clientX, ev.clientY);
     });
     this.on(this.root, "pointermove", (ev) => {
       if (this.resize || ev.pointerType === "touch" || this.root.classList.contains("is-dragging")) return;
@@ -398,6 +558,9 @@ export class TableEditor {
     this.on(this.scroller, "scroll", () => this.placeHandles(), { passive: true });
 
     this.on(this.input, "keydown", (ev) => this.onKey(ev));
+    this.on(this.input, "copy", (ev) => this.onCopy(ev, false));
+    this.on(this.input, "cut", (ev) => this.onCopy(ev, true));
+    this.on(this.input, "paste", (ev) => this.onPaste(ev));
     this.on(this.input, "input", () => {
       if (!this.editing) this.startEdit(false);
       else this.autosize();
@@ -470,16 +633,16 @@ export class TableEditor {
     switch (key) {
       case "ArrowUp":
         stop();
-        return this.move(-1, 0);
+        return this.move(-1, 0, false, ev.shiftKey);
       case "ArrowDown":
         stop();
-        return this.move(1, 0);
+        return this.move(1, 0, false, ev.shiftKey);
       case "ArrowLeft":
         stop();
-        return this.move(0, -1);
+        return this.move(0, -1, false, ev.shiftKey);
       case "ArrowRight":
         stop();
-        return this.move(0, 1);
+        return this.move(0, 1, false, ev.shiftKey);
       case "Tab":
         stop();
         return this.move(0, ev.shiftKey ? -1 : 1, true);
@@ -490,16 +653,98 @@ export class TableEditor {
       case "Backspace":
       case "Delete":
         stop();
-        if (this.sel) this.apply(setCell(this.table, this.sel.r, this.sel.c, ""), this.sel);
+        if (this.sel) {
+          // 清空后选区留着（可以接着设底色、再清）
+          const keep = this.anchor;
+          this.apply(clearCells(this.table, this.rangeCells()), this.sel);
+          if (keep) {
+            this.anchor = keep;
+            this.markSel();
+          }
+        }
         return;
       case "Escape":
         stop();
+        // 选了一片：先收回成一格
+        if (this.isMulti() && this.sel) {
+          this.setSel(this.sel, true);
+          return;
+        }
         this.setSel(null, false);
         this.host.onLeave?.("escape");
         return;
     }
     // 其他键（打字）：落到输入框里，input 事件里开始编辑
     ev.stopPropagation();
+  }
+
+  /** 按住拖过几个格子：选中一片 */
+  private dragSelect(ev: PointerEvent): void {
+    const doc = this.root.ownerDocument;
+    const move = (e: PointerEvent) => {
+      if (this.editing) return;
+      const el = doc.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>(".ggt-cell");
+      if (!el || !this.tableEl.contains(el)) return;
+      const p = { r: Number(el.dataset.r), c: Number(el.dataset.c) };
+      if (this.sel && (p.r !== this.sel.r || p.c !== this.sel.c)) this.setSel(p, true, true);
+    };
+    const up = () => {
+      doc.removeEventListener("pointermove", move);
+      doc.removeEventListener("pointerup", up);
+      doc.removeEventListener("pointercancel", up);
+    };
+    doc.addEventListener("pointermove", move);
+    doc.addEventListener("pointerup", up);
+    doc.addEventListener("pointercancel", up);
+    void ev;
+  }
+
+  // ---------- 复制粘贴 ----------
+
+  /** 选区里的内容（被合并盖住的格子是空的） */
+  private rangeGrid(): string[][] {
+    const r = this.rangeRect();
+    if (!r) return [];
+    const grid: string[][] = [];
+    for (let i = r.r1; i <= r.r2; i++) {
+      const row: string[] = [];
+      for (let j = r.c1; j <= r.c2; j++) row.push(this.table.cells[i][j]);
+      grid.push(row);
+    }
+    return grid;
+  }
+
+  private onCopy(ev: ClipboardEvent, cut: boolean): void {
+    if (this.editing || !this.sel || !ev.clipboardData) return;
+    ev.preventDefault();
+    const grid = this.rangeGrid();
+    const r = this.rangeRect();
+    ev.clipboardData.setData("text/plain", toTSV(grid));
+    ev.clipboardData.setData("text/html", toHTML(grid, r?.r1 === 0));
+    if (cut && !this.host.readonly) this.applyKeepRange(clearCells(this.table, this.rangeCells()));
+  }
+
+  private onPaste(ev: ClipboardEvent): void {
+    if (this.editing || !this.sel || this.host.readonly || !ev.clipboardData) return;
+    const grid = gridFromClipboard(ev.clipboardData, this.root.ownerDocument);
+    if (!grid) return;
+    ev.preventDefault();
+    const r = this.rangeRect() ?? { r1: this.sel.r, c1: this.sel.c, r2: this.sel.r, c2: this.sel.c };
+    // 复制了一格、选了一片：每格都填上（和 Excel 一样）
+    if (grid.length === 1 && grid[0].length === 1 && this.isMulti()) {
+      let next = this.table;
+      for (const p of this.rangeCells()) {
+        const m = mergeAt(next, p.r, p.c);
+        if (!m || (m.r1 === p.r && m.c1 === p.c)) next = setCell(next, p.r, p.c, grid[0][0]);
+      }
+      this.applyKeepRange(next);
+      return;
+    }
+    const next = pasteGrid(this.table, r.r1, r.c1, grid);
+    this.anchor = null;
+    this.apply(next, { r: r.r1, c: r.c1 });
+    // 粘贴进来的那一片选中
+    if (grid.length > 1 || grid[0].length > 1) this.setSel({ r: r.r1 + grid.length - 1, c: r.c1 + Math.max(...grid.map((x) => x.length)) - 1 }, true, true);
   }
 
   // ---------- 触屏 ----------
@@ -773,29 +1018,52 @@ export class TableEditor {
 
   private cellMenu(p: Pos): MenuItem[] {
     const tb = this.table;
+    const multi = this.isMulti();
+    const rect = this.rangeRect();
+    const merged = mergeAt(tb, p.r, p.c);
+    const mergeItems: MenuItem[] = [];
+    if (multi && rect) mergeItems.push({ title: t("mergeCells"), icon: "combine", run: () => this.apply(mergeCells(tb, rect), { r: rect.r1, c: rect.c1 }) });
+    if (merged) mergeItems.push({ title: t("unmergeCells"), icon: "split", run: () => this.apply(unmergeAt(tb, p.r, p.c), { r: merged.r1, c: merged.c1 }) });
+    const cells = multi ? this.rangeCells() : [p];
+    const cols = multi && rect ? Array.from({ length: rect.c2 - rect.c1 + 1 }, (_, i) => rect.c1 + i) : [p.c];
     return [
       { title: t("insertRowAbove"), icon: "arrow-up-to-line", disabled: p.r === 0, run: () => this.apply(insertRow(tb, p.r), p) },
-      { title: t("insertRowBelow"), icon: "arrow-down-to-line", run: () => this.apply(insertRow(tb, p.r + 1), { r: p.r + 1, c: p.c }) },
+      { title: t("insertRowBelow"), icon: "arrow-down-to-line", run: () => this.apply(insertRow(tb, (merged?.r2 ?? p.r) + 1), { r: (merged?.r2 ?? p.r) + 1, c: p.c }) },
       { title: t("insertColLeft"), icon: "arrow-left-to-line", run: () => this.apply(insertCol(tb, p.c), p) },
-      { title: t("insertColRight"), icon: "arrow-right-to-line", run: () => this.apply(insertCol(tb, p.c + 1), { r: p.r, c: p.c + 1 }) },
+      { title: t("insertColRight"), icon: "arrow-right-to-line", run: () => this.apply(insertCol(tb, (merged?.c2 ?? p.c) + 1), { r: p.r, c: (merged?.c2 ?? p.c) + 1 }) },
       { separator: true },
-      ...this.alignItems(p.c),
+      ...mergeItems,
+      ...(mergeItems.length ? [{ separator: true }] : []),
+      ...this.alignItems(cols),
       { separator: true },
-      ...this.colorItems([p]),
+      ...this.colorItems(cells),
       { separator: true },
-      { title: t("clearCell"), icon: "eraser", disabled: !tb.cells[p.r][p.c], run: () => this.apply(setCell(tb, p.r, p.c, ""), p) },
-      { title: t("deleteRow"), icon: "trash-2", danger: true, disabled: p.r === 0 || rowCount(tb) <= 2, run: () => this.apply(deleteRow(tb, p.r), { r: Math.min(p.r, rowCount(tb) - 2), c: p.c }) },
-      { title: t("deleteCol"), icon: "trash-2", danger: true, disabled: colCount(tb) <= 1, run: () => this.apply(deleteCol(tb, p.c), { r: p.r, c: Math.min(p.c, colCount(tb) - 2) }) },
+      { title: t("clearCell"), icon: "eraser", disabled: !cells.some((c) => tb.cells[c.r][c.c]), run: () => this.apply(clearCells(tb, cells), this.sel ?? p) },
+      { title: t("deleteRow"), icon: "trash-2", danger: true, disabled: p.r === 0 || rowCount(tb) <= 2 || multi, run: () => this.apply(deleteRow(tb, p.r), { r: Math.min(p.r, rowCount(tb) - 2), c: p.c }) },
+      { title: t("deleteCol"), icon: "trash-2", danger: true, disabled: colCount(tb) <= 1 || multi, run: () => this.apply(deleteCol(tb, p.c), { r: p.r, c: Math.min(p.c, colCount(tb) - 2) }) },
     ];
   }
 
-  private alignItems(c: number): MenuItem[] {
-    const cur = this.table.align[c];
+  /** 对齐（一列或选区里的几列） */
+  private alignItems(c: number | number[]): MenuItem[] {
+    const cols = Array.isArray(c) ? c : [c];
+    const cur = new Set(cols.map((x) => this.table.align[x] ?? "left"));
+    const one = cur.size === 1 ? [...cur][0] : null;
+    const keep = () => ({ sel: this.sel, anchor: this.anchor });
     const item = (a: Align, title: string, icon: string): MenuItem => ({
       title,
       icon,
-      checked: (cur ?? "left") === a,
-      run: () => this.apply(setAlign(this.table, c, a), this.sel ?? undefined),
+      checked: one === a,
+      run: () => {
+        const k = keep();
+        let next = this.table;
+        for (const x of cols) next = setAlign(next, x, a);
+        this.apply(next, k.sel ?? undefined);
+        if (k.anchor) {
+          this.anchor = k.anchor;
+          this.markSel();
+        }
+      },
     });
     return [item("left", t("alignLeft"), "align-left"), item("center", t("alignCenter"), "align-center"), item("right", t("alignRight"), "align-right")];
   }
@@ -806,8 +1074,8 @@ export class TableEditor {
     const one = current.size === 1 ? [...current][0] : null;
     return [
       { title: t("color") },
-      { swatch: "none", title: t("noColor"), checked: one === "none", run: () => this.apply(setBg(this.table, cells, null), this.sel ?? undefined) },
-      ...CELL_COLORS.map((color): MenuItem => ({ swatch: color, title: t(color), checked: one === color, run: () => this.apply(setBg(this.table, cells, color), this.sel ?? undefined) })),
+      { swatch: "none", title: t("noColor"), checked: one === "none", run: () => this.applyKeepRange(setBg(this.table, cells, null)) },
+      ...CELL_COLORS.map((color): MenuItem => ({ swatch: color, title: t(color), checked: one === color, run: () => this.applyKeepRange(setBg(this.table, cells, color)) })),
     ];
   }
 
@@ -889,4 +1157,44 @@ export class TableEditor {
     this.popover?.remove();
     this.popover = null;
   }
+}
+
+/** 一个 HTML 格子里的文字：<br> 和块级元素之间算换行 */
+function htmlCellText(el: Element): string {
+  const parts: string[] = [];
+  const walk = (n: Node) => {
+    if (n.nodeType === 3) parts.push(n.textContent ?? "");
+    else if (n.nodeName === "BR") parts.push("\n");
+    else {
+      const block = /^(P|DIV|LI)$/.test(n.nodeName) && parts.length && !parts[parts.length - 1].endsWith("\n");
+      if (block) parts.push("\n");
+      n.childNodes.forEach(walk);
+    }
+  };
+  walk(el);
+  return parts.join("").replace(/\u00a0/g, " ").trim();
+}
+
+/**
+ * 剪贴板里的表格：先看 HTML（Excel、飞书、网页复制的表格），再看 Markdown 表格源码，最后按制表符分隔的文字。
+ * 普通的一段文字返回 1×1；什么都没有返回 null
+ */
+export function gridFromClipboard(data: DataTransfer, doc: Document): string[][] | null {
+  const html = data.getData("text/html");
+  if (html && /<table/i.test(html)) {
+    const parsed = new (doc.defaultView ?? window).DOMParser().parseFromString(html, "text/html");
+    const table = parsed.querySelector("table");
+    if (table) {
+      const grid = Array.from(table.querySelectorAll("tr")).map((tr) => Array.from(tr.querySelectorAll("td, th")).map(htmlCellText));
+      if (grid.length && grid.some((r) => r.length)) return grid;
+    }
+  }
+  const text = data.getData("text/plain");
+  if (!text) return null;
+  const lines = text.replace(/\r\n?/g, "\n").trim().split("\n");
+  if (lines.length >= 2 && lines[0].includes("|") && isDelimiterRow(lines[1])) {
+    const t = parseTable(lines);
+    if (t) return t.cells;
+  }
+  return fromTSV(text);
 }

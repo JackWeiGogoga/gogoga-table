@@ -50,7 +50,8 @@
   font-weight: inherit;
   color: var(--text-normal);
 }
-.ggt .ggt-table tr > .ggt-cell:first-child { border-left: 1px solid var(--ggt-line); }
+/* 第一列才有左边框（按列号，不按 :first-child：第一列被合并盖住的行，第一个元素是第二列） */
+.ggt .ggt-table .ggt-cell[data-c="0"] { border-left: 1px solid var(--ggt-line); }
 .ggt .ggt-table thead .ggt-cell { border-top: 1px solid var(--ggt-line); background: var(--ggt-head-bg); font-weight: var(--font-semibold, 600); }
 .ggt .ggt-cell[data-align="center"] { text-align: center; }
 .ggt .ggt-cell[data-align="right"] { text-align: right; }
@@ -128,6 +129,8 @@
   z-index: 3;
   touch-action: none;
 }
+/* 最后一列的手柄不伸出表格，否则横向多出几像素，误报还能滚 */
+.ggt thead .ggt-cell:last-child .ggt-resize { right: 0; width: 6px; }
 .ggt-resize::after { content: ""; position: absolute; top: 4px; bottom: 4px; left: 3px; width: 2px; border-radius: 1px; background: transparent; transition: background 0.12s; }
 .ggt-resize:hover::after, .ggt-resize.is-active::after { background: var(--ggt-sel); }
 .ggt.is-resizing, .ggt.is-resizing * { cursor: col-resize !important; user-select: none; }
@@ -260,3 +263,21 @@
 .ggt-drop-line.is-row { height: 2px; }
 .ggt-drop-line.is-col { width: 2px; }
 .ggt button.ggt-handle { cursor: grab; }
+
+/* 多格选区 */
+.ggt .ggt-cell.is-in-range { background-image: linear-gradient(var(--ggt-sel-soft), var(--ggt-sel-soft)); box-shadow: inset 0 0 0 999px var(--ggt-sel-soft); }
+.ggt.has-range .ggt-cell.is-selected { box-shadow: inset 0 0 0 2px var(--ggt-sel), inset 0 0 0 999px var(--ggt-sel-soft) !important; }
+.ggt .ggt-cell.is-merged { vertical-align: middle; }
+
+/* 表头吸顶：贴着时表头要不透明，压在内容上面 */
+.ggt thead { position: relative; z-index: 3; }
+.ggt.is-stuck thead .ggt-cell { background-color: var(--background-primary); background-image: linear-gradient(var(--ggt-head-bg), var(--ggt-head-bg)); box-shadow: 0 1px 0 var(--ggt-line); }
+
+/* 横向能滚时，两边出一道淡淡的阴影提示还有内容 */
+.ggt::before, .ggt::after { content: ""; position: absolute; top: 10px; bottom: 26px; width: 14px; pointer-events: none; z-index: 4; opacity: 0; transition: opacity 0.15s; }
+.ggt::before { left: 14px; background: linear-gradient(to right, rgba(0, 0, 0, 0.08), transparent); }
+.ggt::after { right: 26px; background: linear-gradient(to left, rgba(0, 0, 0, 0.08), transparent); }
+.ggt.can-left::before, .ggt.can-right::after { opacity: 1; }
+.theme-dark .ggt::before { background: linear-gradient(to right, rgba(0, 0, 0, 0.35), transparent); }
+.theme-dark .ggt::after { background: linear-gradient(to left, rgba(0, 0, 0, 0.35), transparent); }
+.ggt button.ggt-handle { touch-action: none; }

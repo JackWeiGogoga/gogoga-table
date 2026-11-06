@@ -217,7 +217,7 @@ export function livePreviewTables(factory: TableHostFactory): Extension {
       tr.changes.iterChangedRanges((fromA, toA) => {
         let inTable = false;
         deco.between(fromA, toA, (from, to, value) => {
-          if (!(value.spec.widget instanceof TableWidget)) return;
+          if (!((value.spec as { widget?: unknown }).widget instanceof TableWidget)) return;
           if (toA < from || fromA > to) return;
           inTable = true;
           const before = parseAt(oldDoc, from, to);
