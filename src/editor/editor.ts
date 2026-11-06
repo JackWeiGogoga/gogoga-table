@@ -286,6 +286,7 @@ export class TableEditor {
       return;
     }
     el.classList.remove("is-empty");
+    el.classList.toggle("is-plain", !this.host.renderMarkdown);
     if (this.host.renderMarkdown) this.host.renderMarkdown(el, md);
     else el.textContent = md;
   }

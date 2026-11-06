@@ -60,10 +60,13 @@
 .ggt-content {
   padding: var(--ggt-pad-y) var(--ggt-pad-x);
   min-height: calc(1.5em + 2 * var(--ggt-pad-y));
-  white-space: pre-wrap;
+  /* 渲染出来的 Markdown 自己会把换行变成 <br>，这里再保留换行符就会多出一个空行 */
+  white-space: normal;
   overflow-wrap: anywhere;
   cursor: default;
 }
+/* 没有 Markdown 渲染（纯文字显示）时，换行靠这里保留 */
+.ggt-content.is-plain { white-space: pre-wrap; }
 .ggt-content > :first-child { margin-top: 0; }
 .ggt-content > :last-child { margin-bottom: 0; }
 .ggt-content p { margin: 0; }
