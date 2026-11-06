@@ -9,8 +9,8 @@ import { EditorSelection, EditorState, type Extension, Prec, RangeSetBuilder, St
 import { Decoration, type DecorationSet, EditorView, WidgetType } from "@codemirror/view";
 import { redo, undo } from "@codemirror/commands";
 import { Component, editorInfoField, editorLivePreviewField } from "obsidian";
-import { findTables, type TableBlock } from "../core/find";
-import { parseTable, serializeBlock, type Table } from "../core/table";
+import { blockTable, findTables, type TableBlock, writeBlock } from "../core/find";
+import { parseTable, type Table } from "../core/table";
 import { sameTable, TableEditor } from "../editor/editor";
 import type { TableHostFactory } from "./host";
 
@@ -28,17 +28,23 @@ class TableWidget extends WidgetType {
     readonly table: Table,
     readonly source: string,
     readonly factory: TableHostFactory,
+    /** 列表里的表格缩进几层（顶格是 0）：画的时候往右挪，和列表项的文字对齐 */
+    readonly depth = 0,
   ) {
     super();
   }
 
   eq(other: TableWidget): boolean {
-    return other.source === this.source;
+    return other.source === this.source && other.depth === this.depth;
   }
 
   toDOM(view: EditorView): HTMLElement {
     const wrap = document.createElement("div");
     wrap.className = "ggt-lp";
+    if (this.depth) {
+      wrap.classList.add("is-in-list");
+      wrap.style.setProperty("--ggt-depth", String(this.depth));
+    }
     // 表格里的事件不往编辑器上冒：我们的格子也是 <td>/<th>，Obsidian 自己的表格逻辑看到会把整张表重新排版
     for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "dblclick", "contextmenu", "keydown", "keyup", "keypress", "beforeinput", "input", "compositionstart", "compositionupdate", "compositionend", "focusin", "focusout", "paste", "copy", "cut", "dragstart", "drop"]) {
       wrap.addEventListener(type, (ev) => ev.stopPropagation());
@@ -104,7 +110,7 @@ function blockAt(view: EditorView, dom: HTMLElement): { block: TableBlock; from:
 function writeBack(view: EditorView, dom: HTMLElement, table: Table): void {
   const at = blockAt(view, dom);
   if (!at) return;
-  const text = serializeBlock(table, at.block.tail).join("\n");
+  const text = writeBlock(table, at.block).join("\n");
   if (view.state.sliceDoc(at.from, at.to) === text) return;
   view.dispatch({ changes: { from: at.from, to: at.to, insert: text }, userEvent: "input.table" });
 }
@@ -119,18 +125,25 @@ function leave(view: EditorView, dom: HTMLElement, where: "above" | "below" | "e
   view.focus();
 }
 
+/** 缩进算几层：一个 tab 一层，空格按 4 个一层 */
+function depthOf(indent: string): number {
+  let w = 0;
+  for (const ch of indent) w += ch === "\t" ? 4 : 1;
+  return Math.round(w / 4);
+}
+
 function build(state: EditorState, factory: TableHostFactory): DecorationSet {
   if (!factory.enabled() || !state.field(editorLivePreviewField, false)) return Decoration.none;
   const doc = state.doc;
   const lines = docLines(doc);
   const builder = new RangeSetBuilder<Decoration>();
   for (const b of findTables(lines)) {
-    const table = parseTable(lines.slice(b.start, b.end), b.meta);
+    const table = blockTable(lines, b);
     if (!table) continue;
     const from = doc.line(b.start + 1).from;
     const to = doc.line(b.end).to;
     const source = lines.slice(b.start, b.stop).join("\n");
-    builder.add(from, to, Decoration.replace({ block: true, widget: new TableWidget(table, source, factory) }));
+    builder.add(from, to, Decoration.replace({ block: true, widget: new TableWidget(table, source, factory, depthOf(b.indent)) }));
     if (b.metaLine !== null) {
       const m = doc.line(b.metaLine + 1);
       builder.add(m.from, m.to, Decoration.replace({ block: true }));
@@ -243,6 +256,7 @@ function parseAt(doc: Text, from: number, to: number): Table | null {
   const a = doc.lineAt(Math.max(0, Math.min(from, doc.length))).number;
   const b = doc.lineAt(Math.max(0, Math.min(to, doc.length))).number;
   const lines: string[] = [];
-  for (let i = a; i <= b; i++) lines.push(doc.line(i).text);
+  // 列表里的表格每行有缩进：去掉再解析
+  for (let i = a; i <= b; i++) lines.push(doc.line(i).text.trimStart());
   return parseTable(lines, null);
 }

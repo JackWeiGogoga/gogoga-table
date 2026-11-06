@@ -7,51 +7,111 @@
  */
 
 import { type App, MarkdownRenderChild, type MarkdownPostProcessorContext, TFile } from "obsidian";
-import { findTables } from "../core/find";
-import { parseTable, serializeBlock, type Table } from "../core/table";
+import { blockTable, findTables, type TableBlock, writeBlock } from "../core/find";
+import type { Table } from "../core/table";
 import { sameTable, TableEditor } from "../editor/editor";
 import type { TableHostFactory } from "./host";
 
 class TableChild extends MarkdownRenderChild {
   editor: TableEditor | null = null;
-  /** 换下来的原生表格：卸载时（关掉插件、重新加载）放回去，缓存着的段落不会变成空白 */
+  /** 换下来的原生表格（或列表项那一段）：卸载时（关掉插件、重新加载）放回去，缓存着的段落不会变成空白 */
   original: HTMLElement | null = null;
+  /** 列表项那一段被拆成了「前半段、表格、后半段」：卸载时这几块一起换回原来的一段 */
+  extra: HTMLElement[] = [];
   onunload(): void {
     this.editor?.destroy();
-    if (this.original) this.containerEl.replaceWith(this.original);
+    if (!this.original) return;
+    for (const e of this.extra) e.remove();
+    this.containerEl.replaceWith(this.original);
   }
 }
 
+/**
+ * 段落 p 里第 first 行起的 count 行（行之间是 <br>）换成 holder：p 拆成前半段、holder、后半段。
+ * 返回原来的段落（克隆）供卸载时放回；行数对不上返回 null，不动
+ */
+function spliceLines(p: HTMLElement, first: number, count: number, holder: HTMLElement): HTMLElement | null {
+  const nodes = Array.from(p.childNodes);
+  // 每行的节点：按 <br> 切开（<br> 后面紧跟的换行文本归下一行，去掉）
+  const rows: ChildNode[][] = [[]];
+  for (const n of nodes) {
+    if (n.nodeName === "BR") rows.push([]);
+    else rows[rows.length - 1].push(n);
+  }
+  if (rows.length < first + count) return null;
+  const original = p.cloneNode(true) as HTMLElement;
+  const after = p.ownerDocument.createElement("p");
+  const rest = rows.slice(first + count);
+  // 表格下面接着写的文字留在后半段（第一行前面那个换行去掉）
+  rest.forEach((row, i) => {
+    if (i > 0) after.appendChild(p.ownerDocument.createElement("br"));
+    for (const n of row) after.appendChild(n);
+  });
+  // 前半段：表格前面的几行，去掉最后一个 <br>
+  p.replaceChildren();
+  rows.slice(0, first).forEach((row, i) => {
+    if (i > 0) p.appendChild(p.ownerDocument.createElement("br"));
+    for (const n of row) p.appendChild(n);
+  });
+  p.after(holder);
+  const hasRest = Array.from(after.childNodes).some((n) => n.nodeName !== "#comment" && (n.textContent ?? "").trim() !== "");
+  if (hasRest) holder.after(after);
+  (holder as HTMLElement & { ggtSplit?: HTMLElement[] }).ggtSplit = [p, ...(hasRest ? [after] : [])];
+  return original;
+}
+
 /** 文件里和 base 内容一样的表格，按离 near 行的远近排 */
-function locate(lines: string[], base: Table, near: number): { from: number; to: number; tail: string[] }[] {
+function locate(lines: string[], base: Table, near: number): { from: number; to: number; block: TableBlock }[] {
   return findTables(lines)
     .filter((b) => {
-      const t = parseTable(lines.slice(b.start, b.end), b.meta);
+      const t = blockTable(lines, b);
       return t && sameTable(t, base);
     })
-    .map((b) => ({ from: b.start, to: b.stop, tail: b.tail, dist: Math.abs(b.start - near) }))
+    .map((b) => ({ from: b.start, to: b.stop, block: b, dist: Math.abs(b.start - near) }))
     .sort((a, b) => a.dist - b.dist);
 }
 
 export function readingProcessor(app: App, factory: TableHostFactory) {
   return (el: HTMLElement, ctx: MarkdownPostProcessorContext): void => {
     if (!factory.enabled()) return;
-    const tables = Array.from(new Set(el.querySelectorAll<HTMLTableElement>("table")));
-    if (!tables.length) return;
     const info = ctx.getSectionInfo(el);
     if (!info) return;
     const lines = info.text.split("\n");
-    // 这一段里的表格，按顺序和渲染出来的 <table> 对上
     const blocks = findTables(lines).filter((b) => b.start >= info.lineStart && b.start <= info.lineEnd);
-    tables.forEach((tableEl, i) => {
-      const block = blocks[i];
-      if (!block || tableEl.closest(".ggt")) return;
-      const table = parseTable(lines.slice(block.start, block.end), block.meta);
-      if (!table) return;
+    if (!blocks.length) return;
+    // Obsidian 自己画成 <table> 的：顶格的，和列表里前面空一行的。按顺序和渲染出来的 <table> 对上
+    const native = blocks.filter((b) => !b.indent || lines[b.start - 1]?.trim() === "");
+    const tables = Array.from(new Set(el.querySelectorAll<HTMLTableElement>("table")));
+    const slots: { block: TableBlock; mount: (holder: HTMLElement) => HTMLElement | null }[] = [];
+    native.forEach((block, i) => {
+      const tableEl = tables[i];
+      if (!tableEl || tableEl.closest(".ggt")) return;
+      slots.push({
+        block,
+        mount: (holder) => {
+          tableEl.replaceWith(holder);
+          return tableEl;
+        },
+      });
+    });
+    // 列表项下面紧跟着写的：Obsidian 当成这一项的文字续行（每行一个 <br>），把这几行摘出来换成表格
+    for (const block of blocks) {
+      if (native.includes(block) || block.owner === null) continue;
+      const li = el.querySelector<HTMLElement>(`li[data-line="${block.owner - info.lineStart}"]`);
+      const p = li && Array.from(li.children).find((c): c is HTMLElement => c.tagName === "P");
+      const owner = block.owner;
+      if (!p || p.closest(".ggt")) continue;
+      slots.push({ block, mount: (holder) => spliceLines(p, block.start - owner, block.end - block.start, holder) });
+    }
+    for (const { block, mount } of slots) {
+      const table = blockTable(lines, block);
+      if (!table) continue;
       const holder = createDiv({ cls: "ggt-reading" });
-      tableEl.replaceWith(holder);
+      const original = mount(holder);
+      if (!original) continue;
       const child = new TableChild(holder);
-      child.original = tableEl;
+      child.original = original;
+      child.extra = (holder as HTMLElement & { ggtSplit?: HTMLElement[] }).ggtSplit ?? [];
       ctx.addChild(child);
       const editor = new TableEditor(holder, table, factory.host(ctx.sourcePath, child, {
         onChange: (next, prev) => {
@@ -64,7 +124,7 @@ export function readingProcessor(app: App, factory: TableHostFactory) {
               const all = data.split("\n");
               const at = locate(all, prev, near)[0];
               if (!at) return data;
-              all.splice(at.from, at.to - at.from, ...serializeBlock(next, at.tail));
+              all.splice(at.from, at.to - at.from, ...writeBlock(next, at.block));
               written = true;
               return all.join("\n");
             })
@@ -85,6 +145,6 @@ export function readingProcessor(app: App, factory: TableHostFactory) {
       child.editor = editor;
       factory.style(editor.root);
       child.register(factory.attach(editor));
-    });
+    }
   };
 }
