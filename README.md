@@ -60,7 +60,7 @@ The table is a standard GFM table, with alignment in the standard `:---:` form. 
 ## Current scope
 
 - An Advanced Tables formula comment (`<!-- TBLFM -->`) or a block id (`^id`) under a table is kept as is, with our comment after it, so formulas and block references keep working.
-- Only tables that start at the beginning of a line. Tables in code blocks, quotes and callouts (lines starting with `>`), or indented inside lists, are left to Obsidian.
+- Tables at the start of a line, and tables indented under a list item (right after the item or after one blank line, every row with the same indentation). Tables in code blocks, quotes and callouts (lines starting with `>`), and indented text outside lists, are left to Obsidian.
 - A table directly after a paragraph (no blank line in between) is left to Obsidian.
 
 ## License

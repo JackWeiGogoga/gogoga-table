@@ -2,6 +2,11 @@
 
 gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。English: [CHANGELOG.md](CHANGELOG.md).
 
+## [Unreleased]
+
+### 新增
+- 列表项下面缩进写的表格也换成 gogoga 表格了（gogoga Mind Map 里节点下的表格就是这样存的）。Obsidian 自己在实时预览里不显示这种表格、只露出源码，阅读视图里紧跟着列表项写的也只是一串文字；现在两种视图都显示成表格，和列表项的文字对齐，能直接编辑，写回时每行的缩进原样保留。
+
 ## [0.1.0] - 2026-11-06
 
 ### 新增
