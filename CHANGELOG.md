@@ -7,6 +7,9 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - Tables indented under a list item (how gogoga Mind Map stores a table under a node) now become gogoga tables too. Obsidian doesn't render them in Live Preview, only the source, and in Reading view a table written right under the list item shows as plain text; now both views show a table aligned with the list item's text that you can edit, and write-back keeps each line's indentation.
 
+### Fixed
+- Giving header cells a background (click the header row's handle → **Background**, or select header cells) had no effect: the header's default light gray covered it, also with the Minimal and Three-line styles and while the header was stuck to the top. Header colors now show, sticky header included.
+
 ## [0.1.0] - 2026-11-06
 
 ### Added
