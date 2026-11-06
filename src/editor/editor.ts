@@ -13,8 +13,8 @@
  * 第一下输入就把它变成这一格的编辑框，组字不会被打断。
  */
 
-import { type Align, CELL_COLORS, type CellColor, isDelimiterRow, parseTable, type Rect, type Table, TABLE_DENSITIES, TABLE_STYLES, type TableDensity, type TableStyle } from "../core/table";
-import { alignAll, autoWidthAll, bgOf, fgOf, setFg, setWidths, canSortRows, CHECK_RE, duplicateCol, duplicateRow, insertCols, insertRows, sortRows, toggleCheck, editCell, mergedText, shownText, clearAllBg, clearCells, fillRange, setTableLook, type FillDir, isCovered, colCount, deleteCol, deleteRow, insertCol, insertRow, mergeAt, mergeCells, merges, moveCol, moveRow, pasteGrid, rowCount, setAlign, setBg, setCell, setWidth, unmergeAt, widthOf } from "../core/ops";
+import { type Align, type Calc, CALCS, CELL_COLORS, type CellColor, isDelimiterRow, parseTable, type Rect, type Table, TABLE_DENSITIES, TABLE_STYLES, type TableDensity, type TableStyle } from "../core/table";
+import { alignAll, autoWidthAll, bgOf, hasTotal, normalize, setCalc, setOptionColor, setOptionsCol, fgOf, setFg, setWidths, canSortRows, CHECK_RE, duplicateCol, duplicateRow, insertCols, insertRows, sortRows, toggleCheck, editCell, mergedText, shownText, clearAllBg, clearCells, fillRange, setTableLook, type FillDir, isCovered, colCount, deleteCol, deleteRow, insertCol, insertRow, mergeAt, mergeCells, merges, moveCol, moveRow, pasteGrid, rowCount, setAlign, setBg, setCell, setWidth, unmergeAt, widthOf } from "../core/ops";
 import { fromTSV, toHTML, toTSV } from "../core/clipboard";
 import { t } from "./i18n";
 
@@ -121,7 +121,7 @@ export class TableEditor {
   private hover: Pos | null = null;
   private popover: HTMLElement | null = null;
   /** 编辑时的补全列表（[[ 链接、# 标签） */
-  private suggest: { kind: "link" | "tag"; start: number; items: string[]; index: number; el: HTMLElement } | null = null;
+  private suggest: { kind: "link" | "tag" | "option"; start: number; items: string[]; index: number; el: HTMLElement } | null = null;
   private resize: { c: number; startX: number; startW: number; col: HTMLElement } | null = null;
   private destroyed = false;
   /** 上一次长按开菜单的时间（安卓随后还会来一次右键事件，忽略掉） */
@@ -410,7 +410,8 @@ export class TableEditor {
         if (tb.meta.headerCol && c === 0 && r > 0) cell.classList.add("is-head-col");
         const content = cell.appendChild(doc.createElement("div"));
         content.className = "ggt-content";
-        this.fill(content, m ? mergedText(tb, m) : tb.cells[r][c]);
+        if (r === rows - 1 && r > 0 && hasTotal(tb)) cell.classList.add("is-total-row");
+        this.fillCell(content, r, c, m ? mergedText(tb, m) : tb.cells[r][c]);
       }
     }
     this.markSel();
@@ -418,6 +419,22 @@ export class TableEditor {
     this.stickHeader();
     // 列宽变了，线的位置就不对了：先收起来，鼠标再动时按新的边线放
     if (!this.resize) this.resizeBar.classList.remove("is-shown", "is-active");
+  }
+
+  /** 状态列的数据格画成彩色标签，别的照常 */
+  private fillCell(el: HTMLElement, r: number, c: number, md: string): void {
+    const opts = this.table.meta.opts?.[c];
+    const isData = r > 0 && !(hasTotal(this.table) && r === rowCount(this.table) - 1);
+    if (opts && isData && md.trim()) {
+      el.replaceChildren();
+      el.classList.remove("is-empty");
+      const pill = el.appendChild(el.ownerDocument.createElement("span"));
+      pill.className = "ggt-pill";
+      pill.dataset.c = opts[md.trim()] ?? "gray";
+      pill.textContent = md.trim();
+      return;
+    }
+    this.fill(el, md);
   }
 
   private fill(el: HTMLElement, md: string): void {
@@ -606,6 +623,7 @@ export class TableEditor {
     }
     if (this.root.ownerDocument.activeElement !== this.input) this.input.focus({ preventScroll: true });
     this.autosize();
+    this.updateSuggest();
     this.host.onFocus?.();
   }
 
@@ -623,7 +641,7 @@ export class TableEditor {
   /** 编辑结束：内容区换回渲染好的样子 */
   private restoreContent(p: Pos): void {
     const content = this.cellEl(p)?.querySelector<HTMLElement>(".ggt-content");
-    if (content) this.fill(content, shownText(this.table, p.r, p.c));
+    if (content) this.fillCell(content, p.r, p.c, shownText(this.table, p.r, p.c));
   }
 
   /** 编辑完：内容变了就交给宿主 */
@@ -635,13 +653,15 @@ export class TableEditor {
     this.cellEl(p)?.classList.remove("is-editing");
     const text = this.input.value.replace(/\r\n?/g, "\n");
     this.input.value = "";
-    const next = editCell(this.table, p.r, p.c, text.replace(/^\s+|\s+$/g, ""));
+    const edited = editCell(this.table, p.r, p.c, text.replace(/^\s+|\s+$/g, ""));
+    const next = edited === this.table ? edited : normalize(edited);
     const pending = this.pending;
     this.pending = null;
     if (next !== this.table) {
       const prev = this.table;
       this.table = next;
-      this.restoreContent(p);
+      if (hasTotal(next) || next.meta.opts?.some(Boolean)) this.render();
+      else this.restoreContent(p);
       this.host.onChange(next, prev);
     } else if (pending) {
       this.table = pending;
@@ -673,8 +693,9 @@ export class TableEditor {
   }
 
   /** 换一张表并交给宿主，选中挪到 sel */
-  private apply(next: Table, sel?: Pos): void {
+  private apply(nextRaw: Table, sel?: Pos): void {
     if (this.editing) this.commit();
+    const next = nextRaw === this.table ? nextRaw : normalize(nextRaw);
     if (next === this.table) return;
     const prev = this.table;
     this.table = next;
@@ -1058,7 +1079,7 @@ export class TableEditor {
     const before = el.value.slice(0, el.selectionStart);
     const link = /\[\[([^[\]|#^\n]*)$/.exec(before);
     const tag = /(?:^|\s)#([^\s#[\]|,.;:!?，。；：！？]*)$/.exec(before);
-    let kind: "link" | "tag" | null = null;
+    let kind: "link" | "tag" | "option" | null = null;
     let query = "";
     let start = 0;
     if (link && this.host.suggestLinks) {
@@ -1070,7 +1091,24 @@ export class TableEditor {
       query = tag[1];
       start = before.length - tag[1].length;
     }
-    const items = kind === "link" ? this.host.suggestLinks?.(query) ?? [] : kind === "tag" ? this.host.suggestTags?.(query) ?? [] : [];
+    // 状态列：编辑时列出这一列已有的状态，按输入过滤
+    const opts = this.sel && this.sel.r > 0 ? this.table.meta.opts?.[this.sel.c] : null;
+    if (!kind && opts) {
+      kind = "option";
+      query = el.value.trim();
+      start = 0;
+    }
+    const items =
+      kind === "link"
+        ? (this.host.suggestLinks?.(query) ?? [])
+        : kind === "tag"
+          ? (this.host.suggestTags?.(query) ?? [])
+          : kind === "option" && opts
+            ? // 还是原来的值（刚开始编辑）或空着：列出全部；打了字就按字过滤
+              !query || opts[query]
+              ? Object.keys(opts)
+              : Object.keys(opts).filter((x) => x.toLowerCase().includes(query.toLowerCase()))
+            : [];
     if (!kind || !items.length) return this.closeSuggest();
     const doc = this.root.ownerDocument;
     const box = this.suggest?.el ?? doc.body.appendChild(doc.createElement("div"));
@@ -1121,6 +1159,13 @@ export class TableEditor {
     const pick = sg.items[sg.index];
     let insert = pick;
     let rest = v.slice(caret);
+    if (sg.kind === "option") {
+      el.value = pick;
+      el.setSelectionRange(pick.length, pick.length);
+      this.closeSuggest();
+      this.autosize();
+      return;
+    }
     if (sg.kind === "link") {
       // 后面已经有 ]] 就不再补
       if (rest.startsWith("]]")) rest = rest.slice(2);
@@ -1260,8 +1305,66 @@ export class TableEditor {
     const grid = this.rangeGrid();
     const r = this.rangeRect();
     ev.clipboardData.setData("text/plain", toTSV(grid));
-    ev.clipboardData.setData("text/html", toHTML(grid, r?.r1 === 0));
+    ev.clipboardData.setData("text/html", r ? this.styledHTML(r) : toHTML(grid, false));
     if (cut && !this.host.readonly) this.applyKeepRange(clearCells(this.table, this.rangeCells()));
+  }
+
+  /**
+   * 带样式的 HTML：格子实际显示的底色、文字颜色、加粗、对齐、列宽、合并都写成内联样式，
+   * 粘到 Word、飞书、邮件里保留样子。标上 data-ggt，粘回我们自己的表格时用纯文本（Markdown 原文）
+   */
+  private styledHTML(rect: Rect): string {
+    const tb = this.table;
+    const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const win = this.root.ownerDocument.defaultView ?? window;
+    const cols = Array.from(this.tableEl.querySelectorAll("col"));
+    let html = '<table data-ggt="1" style="border-collapse:collapse">';
+    html += "<colgroup>";
+    for (let c = rect.c1; c <= rect.c2; c++) html += `<col style="width:${Math.round(cols[c]?.getBoundingClientRect().width ?? 80)}px">`;
+    html += "</colgroup>";
+    for (let r = rect.r1; r <= rect.r2; r++) {
+      html += "<tr>";
+      for (let c = rect.c1; c <= rect.c2; c++) {
+        const m = mergeAt(tb, r, c);
+        // 被合并盖住、而左上角也在复制范围里：不单独写
+        if (m && (m.r1 !== r || m.c1 !== c) && m.r1 >= rect.r1 && m.c1 >= rect.c1) continue;
+        const el = this.cellEl({ r, c });
+        const cs = el ? win.getComputedStyle(el) : null;
+        const styles = ["border:1px solid #d9d9d9", "padding:6px 10px", "vertical-align:top"];
+        const a = tb.align[c];
+        if (a) styles.push(`text-align:${a}`);
+        if (cs) {
+          if (cs.backgroundColor && !/rgba\(\s*0,\s*0,\s*0,\s*0\s*\)|transparent/.test(cs.backgroundColor)) styles.push(`background-color:${cs.backgroundColor}`);
+          if (fgOf(tb, r, c)) styles.push(`color:${cs.color}`);
+          if (Number(cs.fontWeight) >= 600) styles.push("font-weight:600");
+        }
+        let span = "";
+        if (m && m.r1 === r && m.c1 === c) {
+          const cs2 = Math.min(m.c2, rect.c2) - c + 1;
+          const rs2 = Math.min(m.r2, rect.r2) - r + 1;
+          if (cs2 > 1) span += ` colspan="${cs2}"`;
+          if (rs2 > 1) span += ` rowspan="${rs2}"`;
+        }
+        // 内容：格子里渲染出来的样子；勾选框换成符号，状态标签带上颜色
+        let inner = esc(shownText(tb, r, c)).replace(/\n/g, "<br>");
+        const content = el?.querySelector<HTMLElement>(".ggt-content");
+        if (content && el && !el.classList.contains("is-editing")) {
+          const clone = content.cloneNode(true) as HTMLElement;
+          clone.querySelectorAll("input.ggt-check").forEach((b) => b.replaceWith((b as HTMLInputElement).checked ? "☑ " : "☐ "));
+          clone.querySelectorAll<HTMLElement>(".ggt-pill").forEach((pill, i) => {
+            const orig = content.querySelectorAll<HTMLElement>(".ggt-pill")[i];
+            const ps = orig ? win.getComputedStyle(orig) : null;
+            if (ps) pill.setAttribute("style", `background:${ps.backgroundColor};color:${ps.color};padding:0 8px;border-radius:10px`);
+          });
+          clone.querySelectorAll("textarea").forEach((x) => x.remove());
+          inner = clone.innerHTML;
+        }
+        const tag = r === 0 ? "th" : "td";
+        html += `<${tag}${span} style="${styles.join(";")}">${inner}</${tag}>`;
+      }
+      html += "</tr>";
+    }
+    return html + "</table>";
   }
 
   private onPaste(ev: ClipboardEvent): void {
@@ -1659,6 +1762,9 @@ export class TableEditor {
       ...this.insertColItems(p),
       { title: t("duplicateCol"), icon: "copy-plus", run: () => this.apply(duplicateCol(tb, p.c), { r: p.r, c: p.c + 1 }) },
       { separator: true },
+      ...this.calcItems(p.c),
+      { title: tb.meta.opts?.[p.c] ? t("statusOff") : t("statusOn"), icon: "tags", run: () => this.apply(setOptionsCol(tb, p.c, !tb.meta.opts?.[p.c]), p) },
+      { separator: true },
       { title: t("sortAsc"), icon: "arrow-down-a-z", disabled: !canSortRows(tb), run: () => this.apply(sortRows(tb, p.c, false, this.hasTotalRow()), p) },
       { title: t("sortDesc"), icon: "arrow-up-z-a", disabled: !canSortRows(tb), run: () => this.apply(sortRows(tb, p.c, true, this.hasTotalRow()), p) },
       { separator: true },
@@ -1692,6 +1798,7 @@ export class TableEditor {
       ...(mergeItems.length ? [{ separator: true }] : []),
       ...this.alignItems(cols),
       { separator: true },
+      ...this.statusColorItems(p),
       ...this.colorItems(cells),
       { separator: true },
       { title: CHECK_RE.test(tb.cells[p.r][p.c]) ? t("removeCheckbox") : t("addCheckbox"), icon: "square-check", disabled: multi, run: () => this.apply(setCell(tb, p.r, p.c, CHECK_RE.test(tb.cells[p.r][p.c]) ? tb.cells[p.r][p.c].replace(CHECK_RE, "").trimStart() : `[ ] ${tb.cells[p.r][p.c]}`.trimEnd()), p) },
@@ -1729,9 +1836,33 @@ export class TableEditor {
     ];
   }
 
-  /** 有没有合计行（第三批加；先留接口） */
+  /** 状态列的格子：改这个状态的颜色（整列同一个状态一起变） */
+  private statusColorItems(p: Pos): MenuItem[] {
+    const v = this.table.cells[p.r][p.c].trim();
+    const opts = this.table.meta.opts?.[p.c];
+    if (!opts || !v || p.r === 0) return [];
+    return [
+      { title: t("statusColor").replace("{v}", v) },
+      ...CELL_COLORS.map((color): MenuItem => ({ swatch: color, title: t(color), checked: opts[v] === color, run: () => this.applyKeepRange(setOptionColor(this.table, p.c, v, color)) })),
+      { separator: true },
+    ];
+  }
+
+  /** 合计：这一列怎么算（求和、平均……），勾着的是现在的 */
+  private calcItems(c: number): MenuItem[] {
+    const cur = this.table.meta.calc?.[c] ?? null;
+    const item = (how: Calc | null): MenuItem => ({
+      title: how ? t(`calc_${how}`) : t("calc_none"),
+      checked: cur === how,
+      disabled: !how && !cur,
+      run: () => this.apply(setCalc(this.table, c, how, t("totalLabel")), this.sel ?? undefined),
+    });
+    return [{ title: t("calcTitle") }, ...CALCS.map((x) => item(x)), item(null), { separator: true }];
+  }
+
+  /** 有没有合计行 */
   private hasTotalRow(): boolean {
-    return false;
+    return hasTotal(this.table);
   }
 
   /** 对齐（一列或选区里的几列） */
@@ -1880,6 +2011,8 @@ function htmlCellText(el: Element): string {
  */
 export function gridFromClipboard(data: DataTransfer, doc: Document): string[][] | null {
   const html = data.getData("text/html");
+  // 从我们自己的表格复制的：纯文本里是 Markdown 原文（链接、加粗都在），用它
+  if (html && /data-ggt="1"/.test(html) && data.getData("text/plain")) return fromTSV(data.getData("text/plain"));
   if (html && /<table/i.test(html)) {
     const parsed = new (doc.defaultView ?? window).DOMParser().parseFromString(html, "text/html");
     const table = parsed.querySelector("table");

@@ -17,6 +17,9 @@ export type Align = "left" | "center" | "right" | null;
 export const CELL_COLORS = ["gray", "red", "orange", "yellow", "green", "blue", "purple"] as const;
 export type CellColor = (typeof CELL_COLORS)[number];
 
+export const CALCS = ["sum", "avg", "count", "max", "min"] as const;
+export type Calc = (typeof CALCS)[number];
+
 export const TABLE_STYLES = ["default", "zebra", "minimal", "academic"] as const;
 export type TableStyle = (typeof TABLE_STYLES)[number];
 export const TABLE_DENSITIES = ["comfortable", "compact"] as const;
@@ -31,6 +34,10 @@ export interface TableMeta {
   merge?: string[];
   /** 格子的文字颜色，键是 A1 式坐标 */
   fg?: Record<string, CellColor>;
+  /** 每列的合计方式；有任何一列设了，最后一行就是合计行 */
+  calc?: (Calc | null)[];
+  /** 状态列：每列「值 → 颜色」；设了的列，格子画成彩色标签 */
+  opts?: (Record<string, CellColor> | null)[];
   /** 第一列当标题列（加底色、加粗） */
   headerCol?: boolean;
   /** 这张表自己的样式、行距（不写就跟着设置走） */
@@ -153,6 +160,23 @@ function sanitizeMeta(raw: Record<string, unknown>): TableMeta {
     else delete meta.w;
   }
   if (raw.headerCol !== undefined && raw.headerCol !== true) delete meta.headerCol;
+  if (raw.calc !== undefined) {
+    const calc = Array.isArray(raw.calc) ? raw.calc.map((x) => ((CALCS as readonly unknown[]).includes(x) ? (x as Calc) : null)) : [];
+    if (calc.some(Boolean)) meta.calc = calc;
+    else delete meta.calc;
+  }
+  if (raw.opts !== undefined) {
+    const opts = Array.isArray(raw.opts)
+      ? raw.opts.map((o) => {
+          if (!o || typeof o !== "object" || Array.isArray(o)) return null;
+          const m: Record<string, CellColor> = {};
+          for (const [k, v] of Object.entries(o as Record<string, unknown>)) if ((CELL_COLORS as readonly string[]).includes(v as string)) m[k] = v as CellColor;
+          return m;
+        })
+      : [];
+    if (opts.some(Boolean)) meta.opts = opts;
+    else delete meta.opts;
+  }
   if (raw.fg !== undefined) {
     const fg: Record<string, CellColor> = {};
     if (raw.fg && typeof raw.fg === "object" && !Array.isArray(raw.fg)) {
@@ -280,6 +304,15 @@ export function metaToWrite(meta: TableMeta, cols: number): TableMeta | null {
   }
   if (out.bg && !Object.keys(out.bg).length) delete out.bg;
   if (out.fg && !Object.keys(out.fg).length) delete out.fg;
+  for (const key of ["calc", "opts"] as const) {
+    const a = out[key] as unknown[] | undefined;
+    if (!a) continue;
+    const b = a.slice(0, cols);
+    if (b.some(Boolean)) {
+      while (b.length && !b[b.length - 1]) b.pop();
+      (out as Record<string, unknown>)[key] = b;
+    } else delete out[key];
+  }
   if (out.merge && !out.merge.length) delete out.merge;
   for (const k of Object.keys(out)) if (out[k] === undefined) delete out[k];
   return Object.keys(out).length ? out : null;

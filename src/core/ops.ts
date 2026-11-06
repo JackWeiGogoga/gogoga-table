@@ -3,7 +3,7 @@
  * 增删、移动行列时，注释里按坐标记的东西（底色）和按列记的东西（列宽）跟着挪。
  */
 
-import { type Align, type CellColor, cellRef, parseRange, parseRef, rangeRef, type Rect, type Table, type TableDensity, type TableMeta, type TableStyle } from "./table";
+import { type Align, type Calc, type CellColor, cellRef, parseRange, parseRef, rangeRef, type Rect, type Table, type TableDensity, type TableMeta, type TableStyle } from "./table";
 import { fillSeries } from "./fill";
 
 export function cloneTable(t: Table): Table {
@@ -20,6 +20,8 @@ function cloneMeta(m: TableMeta): TableMeta {
   if (m.w) out.w = m.w.slice();
   if (m.bg) out.bg = { ...m.bg };
   if (m.fg) out.fg = { ...m.fg };
+  if (m.calc) out.calc = m.calc.slice();
+  if (m.opts) out.opts = m.opts.map((o) => (o ? { ...o } : null));
   if (m.merge) out.merge = m.merge.slice();
   return out;
 }
@@ -73,6 +75,19 @@ function remapMerges(meta: TableMeta, fr: (r: number) => number | null, fc: (c: 
   meta.merge = out;
 }
 
+/** 按列记的设置（列宽、合计方式、状态选项）：插、删、挪列时一起改 */
+const COL_KEYS = ["w", "calc", "opts"] as const;
+function spliceCols(meta: TableMeta, n: number, op: (a: unknown[]) => void): void {
+  for (const key of COL_KEYS) {
+    const src = meta[key] as unknown[] | undefined;
+    if (!src) continue;
+    const a = src.slice(0, n);
+    while (a.length < n) a.push(null);
+    op(a);
+    (meta as Record<string, unknown>)[key] = a;
+  }
+}
+
 /** 列宽数组补到 n 列，方便按列号增删 */
 function widths(meta: TableMeta, n: number): (number | null)[] {
   const w = (meta.w ?? []).slice(0, n);
@@ -89,7 +104,9 @@ export function setCell(t: Table, r: number, c: number, text: string): Table {
 
 /** 在第 at 行前面插入一行（at = 行数时加在最后）。表头（第 0 行）前面不能插 */
 export function insertRow(t: Table, at: number): Table {
-  const i = Math.max(1, Math.min(at, rowCount(t)));
+  let i = Math.max(1, Math.min(at, rowCount(t)));
+  // 合计行一直在最后：往最后加的行加在它前面
+  if (hasTotal(t) && i === rowCount(t)) i = rowCount(t) - 1;
   const n = cloneTable(t);
   n.cells.splice(i, 0, Array.from({ length: colCount(t) }, () => ""));
   remapCells(n.meta, (r, c) => [r >= i ? r + 1 : r, c]);
@@ -101,6 +118,7 @@ export function insertRow(t: Table, at: number): Table {
 export function deleteRow(t: Table, r: number): Table {
   if (r < 1 || r >= rowCount(t) || rowCount(t) <= 2) return t;
   const n = cloneTable(t);
+  if (hasTotal(t) && r === rowCount(t) - 1) delete n.meta.calc;
   n.cells.splice(r, 1);
   remapCells(n.meta, (rr, c) => (rr === r ? null : [rr > r ? rr - 1 : rr, c]));
   remapMerges(n.meta, (rr) => (rr === r ? null : rr > r ? rr - 1 : rr), (c) => c, false);
@@ -112,11 +130,7 @@ export function insertCol(t: Table, at: number): Table {
   const n = cloneTable(t);
   for (const row of n.cells) row.splice(i, 0, "");
   n.align.splice(i, 0, null);
-  if (n.meta.w) {
-    const w = widths(n.meta, colCount(t));
-    w.splice(i, 0, null);
-    n.meta.w = w;
-  }
+  spliceCols(n.meta, colCount(t), (a) => a.splice(i, 0, null));
   remapCells(n.meta, (r, c) => [r, c >= i ? c + 1 : c]);
   remapMerges(n.meta, (r) => r, (c) => (c >= i ? c + 1 : c), true);
   return n;
@@ -128,11 +142,7 @@ export function deleteCol(t: Table, c: number): Table {
   const n = cloneTable(t);
   for (const row of n.cells) row.splice(c, 1);
   n.align.splice(c, 1);
-  if (n.meta.w) {
-    const w = widths(n.meta, colCount(t));
-    w.splice(c, 1);
-    n.meta.w = w;
-  }
+  spliceCols(n.meta, colCount(t), (a) => a.splice(c, 1));
   remapCells(n.meta, (r, cc) => (cc === c ? null : [r, cc > c ? cc - 1 : cc]));
   remapMerges(n.meta, (r) => r, (cc) => (cc === c ? null : cc > c ? cc - 1 : cc), false);
   return n;
@@ -140,7 +150,7 @@ export function deleteCol(t: Table, c: number): Table {
 
 /** 把第 from 行挪到第 to 的位置（都是数据行，表头不动） */
 export function moveRow(t: Table, from: number, to: number): Table {
-  const last = rowCount(t) - 1;
+  const last = rowCount(t) - 1 - (hasTotal(t) ? 1 : 0);
   if (from < 1 || from > last) return t;
   const dest = Math.max(1, Math.min(to, last));
   if (dest === from) return t;
@@ -160,11 +170,7 @@ export function moveCol(t: Table, from: number, to: number): Table {
   const n = cloneTable(t);
   for (const row of n.cells) row.splice(dest, 0, ...row.splice(from, 1));
   n.align.splice(dest, 0, ...n.align.splice(from, 1));
-  if (n.meta.w) {
-    const w = widths(n.meta, colCount(t));
-    w.splice(dest, 0, ...w.splice(from, 1));
-    n.meta.w = w;
-  }
+  spliceCols(n.meta, colCount(t), (a) => a.splice(dest, 0, ...a.splice(from, 1)));
   remapCells(n.meta, (r, c) => [r, movedIndex(c, from, dest)]);
   remapMerges(n.meta, (r) => r, (c) => movedIndex(c, from, dest), false);
   return n;
@@ -309,7 +315,9 @@ export function pasteGrid(t: Table, r: number, c: number, grid: readonly (readon
   if (!grid.length) return t;
   let n = cloneTable(t);
   const width = Math.max(...grid.map((row) => row.length));
-  while (rowCount(n) < r + grid.length) n = insertRow(n, rowCount(n));
+  // 有合计行时贴到它上面为止：不够就在它前面加行
+  const total = () => (hasTotal(n) && r < rowCount(n) - 1 ? 1 : 0);
+  while (rowCount(n) - total() < r + grid.length) n = insertRow(n, rowCount(n));
   while (colCount(n) < c + width) n = insertCol(n, colCount(n));
   grid.forEach((row, i) => row.forEach((v, j) => (n.cells[r + i][c + j] = v)));
   return n;
@@ -331,7 +339,9 @@ export function fillRange(t: Table, src: Rect, dir: FillDir, count: number, copy
   if (dir === "up") cnt = Math.min(count, src.r1 - (src.r1 > 0 ? 1 : 0));
   if (dir === "left") cnt = Math.min(count, src.c1);
   if (cnt <= 0) return { table: t, filled: src };
-  if (dir === "down") while (rowCount(n) < src.r2 + 1 + cnt) n = insertRow(n, rowCount(n));
+  // 有合计行时数据只填到它上面：不够就在它前面加行
+  const total = () => (hasTotal(n) && src.r2 < rowCount(n) - 1 ? 1 : 0);
+  if (dir === "down") while (rowCount(n) - total() < src.r2 + 1 + cnt) n = insertRow(n, rowCount(n));
   if (dir === "right") while (colCount(n) < src.c2 + 1 + cnt) n = insertCol(n, colCount(n));
   if (vertical) {
     for (let c = src.c1; c <= src.c2; c++) {
@@ -537,4 +547,146 @@ export function toggleCheck(t: Table, r: number, c: number): Table {
   const m = v === undefined ? null : CHECK_RE.exec(v);
   if (!m) return t;
   return setCell(t, r, c, (m[1] === " " ? "[x]" : "[ ]") + v.slice(3));
+}
+
+// ---------- 合计行 ----------
+
+export function hasTotal(t: Table): boolean {
+  return !!t.meta.calc?.some(Boolean);
+}
+
+/** 格子里的数：去掉千分位、货币符号、百分号；不是数返回 null */
+function parseNum(s: string): { v: number; places: number; pct: boolean } | null {
+  // 去掉包在外面的格式（**加粗**、==高亮==、`代码`……），再去掉千分位、货币符号
+  const raw = s
+    .trim()
+    .replace(/^(\*\*|__|\*|_|==|~~|`)(.*)\1$/, "$2")
+    .replace(/[,，\s]/g, "")
+    .replace(/^[+]/, "")
+    .replace(/^[¥$€£]/, "");
+  const pct = raw.endsWith("%");
+  const body = pct ? raw.slice(0, -1) : raw;
+  if (!/^-?\d+(\.\d+)?$/.test(body)) return null;
+  const i = body.indexOf(".");
+  return { v: Number(body), places: i < 0 ? 0 : body.length - i - 1, pct };
+}
+
+function fmt(v: number, places: number, pct: boolean): string {
+  const p = Math.min(4, places);
+  return (Number.isInteger(v) && p === 0 ? String(v) : v.toFixed(p)) + (pct ? "%" : "");
+}
+
+/** 一列的合计：数据行里能读成数的格子（计数算不空的格子） */
+export function calcColumn(t: Table, c: number, how: Calc): string {
+  const last = rowCount(t) - 1;
+  const cells = t.cells.slice(1, last).map((r) => r[c] ?? "");
+  if (how === "count") return String(cells.filter((x) => x.trim()).length);
+  const nums = cells.map(parseNum).filter((x): x is NonNullable<ReturnType<typeof parseNum>> => !!x);
+  if (!nums.length) return "";
+  const places = Math.max(...nums.map((x) => x.places));
+  const pct = nums.every((x) => x.pct);
+  const vals = nums.map((x) => x.v);
+  if (how === "sum") return fmt(vals.reduce((a, b) => a + b, 0), places, pct);
+  if (how === "avg") {
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    return fmt(avg, Number.isInteger(avg) ? places : Math.max(places, 2), pct);
+  }
+  return fmt(how === "max" ? Math.max(...vals) : Math.min(...vals), places, pct);
+}
+
+/**
+ * 设第 c 列的合计方式（null 去掉）。第一次设：在最后加一行合计行，第一列空着就写「合计」。
+ * 全都去掉后合计行留着（变成普通的一行），不再自动算
+ */
+export function setCalc(t: Table, c: number, how: Calc | null, label = "合计"): Table {
+  let n = cloneTable(t);
+  if (how && !hasTotal(t)) {
+    n.cells.push(Array.from({ length: colCount(t) }, () => ""));
+    if (c !== 0) n.cells[rowCount(n) - 1][0] = label;
+  }
+  const calc = Array.from({ length: colCount(n) }, (_, i) => n.meta.calc?.[i] ?? null);
+  calc[c] = how;
+  n.meta.calc = calc;
+  if (!calc.some(Boolean)) delete n.meta.calc;
+  n = computeTotals(n);
+  return n;
+}
+
+/** 重算合计行（数据变了之后调）；没变返回原表 */
+export function computeTotals(t: Table): Table {
+  if (!hasTotal(t)) return t;
+  const last = rowCount(t) - 1;
+  let n: Table | null = null;
+  t.meta.calc?.forEach((how, c) => {
+    if (!how || c >= colCount(t)) return;
+    const v = calcColumn(t, c, how);
+    if (t.cells[last][c] !== v) {
+      n ??= cloneTable(t);
+      n.cells[last][c] = v;
+    }
+  });
+  return n ?? t;
+}
+
+// ---------- 状态列 ----------
+
+/** 状态标签的颜色依次用这些（不先用灰色） */
+const OPT_COLORS: CellColor[] = ["blue", "green", "orange", "purple", "red", "yellow", "gray"];
+
+/** 状态列里的格子（数据行，不含合计行） */
+function optionValues(t: Table, c: number): string[] {
+  const end = rowCount(t) - (hasTotal(t) ? 1 : 0);
+  const out: string[] = [];
+  for (let r = 1; r < end; r++) {
+    const v = (t.cells[r]?.[c] ?? "").trim();
+    if (v && !out.includes(v)) out.push(v);
+  }
+  return out;
+}
+
+/** 把第 c 列设成状态列（on 为 false 取消）：现有的值各分一个颜色 */
+export function setOptionsCol(t: Table, c: number, on: boolean): Table {
+  const n = cloneTable(t);
+  const opts = Array.from({ length: colCount(n) }, (_, i) => n.meta.opts?.[i] ?? null);
+  opts[c] = on ? {} : null;
+  n.meta.opts = opts;
+  if (!opts.some(Boolean)) delete n.meta.opts;
+  return syncOptions(n);
+}
+
+/** 状态列里出现了新的值：分一个还没用过的颜色（都用过了就轮着用）；没变返回原表 */
+export function syncOptions(t: Table): Table {
+  if (!t.meta.opts?.some(Boolean)) return t;
+  let n: Table | null = null;
+  t.meta.opts.forEach((m, c) => {
+    if (!m || c >= colCount(t)) return;
+    for (const v of optionValues(t, c)) {
+      const cur = (n ?? t).meta.opts?.[c] ?? {};
+      if (cur[v]) continue;
+      const used = new Set(Object.values(cur));
+      const color = OPT_COLORS.find((x) => !used.has(x)) ?? OPT_COLORS[Object.keys(cur).length % OPT_COLORS.length];
+      n ??= cloneTable(t);
+      const opts = n.meta.opts!;
+      opts[c] = { ...(opts[c] ?? {}), [v]: color };
+    }
+  });
+  return n ?? t;
+}
+
+/** 改一个状态值的颜色（整列这个值都跟着变） */
+export function setOptionColor(t: Table, c: number, value: string, color: CellColor): Table {
+  if (!t.meta.opts?.[c]) return t;
+  const n = cloneTable(t);
+  n.meta.opts![c] = { ...n.meta.opts![c]!, [value.trim()]: color };
+  return n;
+}
+
+/** 状态列的选项（编辑时下拉用） */
+export function optionsOf(t: Table, c: number): string[] {
+  return Object.keys(t.meta.opts?.[c] ?? {});
+}
+
+/** 交给宿主之前统一整理：状态列的新值分颜色、合计行重算 */
+export function normalize(t: Table): Table {
+  return computeTotals(syncOptions(t));
 }
