@@ -24,8 +24,8 @@
 }
 .ggt[data-density="compact"] { --ggt-pad-y: 3px; --ggt-pad-x: 8px; }
 
-/* 右边、下边留几像素：骑在表格右下角的填充柄、选区框不会被滚动容器裁掉 */
-.ggt-scroll { overflow-x: auto; overflow-y: visible; padding: 0 6px 6px 0; margin: 0 -6px -6px 0; }
+/* 右边、下边留出位置：骑在表格右下角的填充柄（连同它放大的点击范围）不会被裁掉，也不会把表格撑出横向滚动 */
+.ggt-scroll { overflow-x: auto; overflow-y: visible; padding: 0 12px 12px 0; margin: 0 -12px -12px 0; }
 .ggt-table {
   border-collapse: separate;
   border-spacing: 0;
