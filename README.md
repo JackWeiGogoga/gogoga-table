@@ -6,6 +6,23 @@ Tables that look and feel like Notion or Feishu docs: click a cell to edit, colo
 
 The interface follows Obsidian's language setting (English and Simplified Chinese). Works on desktop and mobile.
 
+## Install
+
+### Community plugins (recommended)
+
+Settings → Community plugins → turn off **Restricted mode** → **Browse**, search for **gogoga Table**, install it, then click **Enable**. Updates show up there too.
+
+### Manual install
+
+For offline machines (such as a company network) or to pin a specific version:
+
+1. Open the [Releases page](https://github.com/JackWeiGogoga/gogoga-table/releases/latest) and download the three files `main.js`, `manifest.json`, `styles.css` under **Assets**. **Don't download the Source code archives**: they are the source code, which Obsidian can't load.
+2. In your vault's folder, go to `.obsidian/plugins/`, create a folder named `gogoga-table`, and put the files in it, so you end up with paths like `<vault>/.obsidian/plugins/gogoga-table/main.js`.
+   - `.obsidian` is a hidden folder: press `⌘ ⇧ .` in Finder on macOS; on Windows, tick **Hidden items** under **View** in File Explorer.
+3. Restart Obsidian (or click the refresh button under Settings → Community plugins), then enable **gogoga Table** in the list of installed plugins.
+
+On phones, where moving files around is awkward, use the community plugins browser.
+
 ## Usage
 
 It works as soon as it's on: Markdown tables in Live Preview and Reading view become gogoga tables, with no new syntax to learn.

@@ -6,6 +6,23 @@ Notion、飞书文档那样的表格：好看，点格子就能改，底色、�
 
 界面语言跟随 Obsidian 的语言设置，支持简体中文和英文。桌面端和移动端都能用。
 
+## 安装
+
+### 插件市场（推荐）
+
+设置 → 第三方插件 → 关闭「安全模式」（新版叫「受限模式」）→ 点「浏览」，搜索 **gogoga Table**，安装后点「启用」。以后有新版本也在这里更新。
+
+### 手动安装
+
+不能联网（比如公司内网）、或者想装指定版本时用：
+
+1. 打开 [Releases 页面](https://github.com/JackWeiGogoga/gogoga-table/releases/latest)，在 **Assets** 里下载 `main.js`、`manifest.json`、`styles.css` 这三个文件。**不要下载 Source code 压缩包**：那是源码，Obsidian 用不了。
+2. 打开你的库（vault）所在文件夹，进到 `.obsidian/plugins/`，新建一个叫 `gogoga-table` 的文件夹，把下载的文件放进去，最后是 `<库>/.obsidian/plugins/gogoga-table/main.js` 这样的路径。
+   - `.obsidian` 是隐藏文件夹：macOS 在访达里按 `⌘ ⇧ .` 显示；Windows 在资源管理器的「查看」里勾选「隐藏的项目」。
+3. 重启 Obsidian（或在 设置 → 第三方插件 里点刷新按钮），在「已安装插件」列表里启用 **gogoga Table**。
+
+手机上不方便放文件，建议用插件市场装。
+
 ## 用法
 
 装好就生效：笔记里的 Markdown 表格在实时预览和阅读视图里都换成 gogoga Table 的样子，不用改任何写法。
