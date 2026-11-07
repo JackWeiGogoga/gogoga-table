@@ -141,6 +141,22 @@ export function readingProcessor(app: App, factory: TableHostFactory) {
               }, 800);
             });
         },
+        // 删除整张表：按现在显示的这张在文件里找到，连同注释删掉；前后都是空行时多删一个
+        onDeleteTable: () => {
+          const file = app.vault.getAbstractFileByPath(ctx.sourcePath);
+          if (!(file instanceof TFile)) return;
+          const near = ctx.getSectionInfo(el)?.lineStart ?? block.start;
+          const base = editor.getTable();
+          void app.vault.process(file, (data) => {
+            const all = data.split("\n");
+            const at = locate(all, base, near)[0];
+            if (!at) return data;
+            let { from, to } = at;
+            if ((all[from - 1] ?? "").trim() === "" && (all[to] ?? "").trim() === "" && to < all.length) to += 1;
+            all.splice(from, to - from);
+            return all.join("\n");
+          });
+        },
       }));
       child.editor = editor;
       factory.style(editor.root);

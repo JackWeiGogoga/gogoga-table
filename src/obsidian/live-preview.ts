@@ -57,6 +57,7 @@ class TableWidget extends WidgetType {
       undo: () => undo(view),
       redo: () => redo(view),
       onLeave: (where) => leave(view, wrap, where),
+      onDeleteTable: () => removeTable(view, wrap),
     }));
     this.factory.style(editor.root);
     (wrap as HTMLElement & { ggtCleanup?: () => void }).ggtCleanup = this.factory.attach(editor);
@@ -113,6 +114,24 @@ function writeBack(view: EditorView, dom: HTMLElement, table: Table): void {
   const text = writeBlock(table, at.block).join("\n");
   if (view.state.sliceDoc(at.from, at.to) === text) return;
   view.dispatch({ changes: { from: at.from, to: at.to, insert: text }, userEvent: "input.table" });
+}
+
+/** 删掉整张表（连同下面的注释），表格前后多出来的一个空行也去掉；走编辑器事务，⌘Z 能撤回 */
+function removeTable(view: EditorView, dom: HTMLElement): void {
+  const at = blockAt(view, dom);
+  if (!at) return;
+  const doc = view.state.doc;
+  let from = at.from;
+  let to = at.to;
+  // 吃掉后面的换行；表格在最后一行时吃掉前面的换行
+  if (to < doc.length) to += 1;
+  else if (from > 0) from -= 1;
+  // 前后都是空行时再去掉一个，别留下两个空行
+  const before = from > 0 ? doc.lineAt(from - 1) : null;
+  const after = to < doc.length ? doc.lineAt(to) : null;
+  if (before && after && before.text.trim() === "" && after.text.trim() === "") to = Math.min(doc.length, after.to + 1);
+  view.dispatch({ changes: { from, to, insert: "" }, selection: { anchor: from }, userEvent: "delete.table" });
+  view.focus();
 }
 
 /** 从表格里出来：光标放到表格上面或下面一行 */

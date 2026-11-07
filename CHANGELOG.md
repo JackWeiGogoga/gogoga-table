@@ -4,6 +4,9 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Added
+- **Delete table** in the menu of the table button (top-left corner): removes the whole table along with its comment line; ⌘Z brings it back in Live Preview.
+
 ## [0.2.0] - 2026-11-07
 
 ### Added
