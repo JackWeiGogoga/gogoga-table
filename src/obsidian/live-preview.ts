@@ -88,7 +88,7 @@ class TableWidget extends WidgetType {
   }
 
   get estimatedHeight(): number {
-    return 36 * this.table.cells.length + 40;
+    return 38 * this.table.cells.length + 40;
   }
 }
 

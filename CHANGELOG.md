@@ -4,6 +4,10 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Fixed
+- Long tables no longer jitter while scrolling: the sticky header used to trail one step behind every scroll and snap back. On desktop the browser now moves the header in the same frame as the scroll; older environments keep the previous behavior. (#2)
+- The sticky header now works in Reading view too; it used to stay at the top of the table there.
+
 ## [0.4.1] - 2026-11-08
 
 ### Changed
