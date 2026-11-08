@@ -4,6 +4,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-08
+
 ### 优化
 - 大表格快了很多：纯文字、数字的格子不再逐个走 Markdown 渲染，选中、方向键、十字高亮只更新变了的地方。1000 行 × 20 列的表，打开从 1.6 秒降到 0.4 秒，撤销从 9 秒降到 0.5 秒，选中挪一格从约 0.2 秒降到 0.1 秒以内，切到阅读视图从 2.4 秒降到 0.6 秒。
 - 大表格里改一个格子快了很多：写回笔记时只改变了的那几个字，不再整张表替换，Obsidian 自己的原生表格只更新那一格、不整张重建。1000 行 × 20 列的表，改一格从约 3 秒（最慢 10 秒以上）降到约 0.1 秒。
@@ -37,7 +39,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 ### 新增
 - 第一个版本：实时预览和阅读视图里的 Markdown 表格换成 Notion 风格的表格。点格子编辑，Enter / Tab 跳格，加行加列，行列手柄和右键菜单，拖列宽，七种底色，三套样式和两档行距；手机上点一下编辑、长按出菜单。选一片格子一起设底色、对齐、清空；和 Excel、飞书、网页互相复制粘贴；合并单元格；拖动行列手柄调整顺序；长表格表头吸顶，宽表格左右有滚动提示。下拉填充；表格左上角菜单（单表样式、三线表、标题列、整表对齐、平均分布列宽、撑满页面）；按列排序；复制行列、一次插入多行；勾选框；文字颜色；合计行；状态列；编辑格子时的格式快捷键和 [[ 链接、# 标签补全；插入表格、文字转表格等命令。复制带样式的 HTML。兼容 Advanced Tables 的公式注释和块标识。文件仍是标准 Markdown 表格，列宽、颜色、合并等存在表格下面的一行注释里。
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.4.0...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.4.1...HEAD
+[0.4.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.1.0...0.2.0
