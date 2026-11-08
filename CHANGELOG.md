@@ -9,6 +9,9 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 - Freeze the header column: with **First column as header** on, the menu gains **Freeze header column**, which keeps the first column pinned on the left with a shadow along its edge while the table scrolls sideways. Turning the header column off removes the freeze too.
 - Crosshair highlight (in settings, off by default): selecting a cell tints its whole row and column so large tables are easier to follow; **On selected and hovered cells** follows the mouse as well.
 
+### Changed
+- When a wide table scrolls sideways, the cut-off side now fades out. The old grey shadow sat a little inside the actual edge, leaving part of a column showing past it, which looked unfinished.
+
 ## [0.3.0] - 2026-11-07
 
 ### Added
