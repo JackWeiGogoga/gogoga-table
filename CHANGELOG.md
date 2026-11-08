@@ -6,6 +6,7 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ### Changed
 - Big tables are much faster: plain-text and number cells skip Markdown rendering, and selecting, arrow keys and the crosshair only update what changed. On a 1000 × 20 table, opening goes from 1.6 s to 0.4 s, undo from 9 s to 0.5 s, moving the selection from about 0.2 s to under 0.1 s, and switching to Reading view from 2.4 s to 0.6 s.
+- Editing a cell in a big table is much faster: writing back changes only the characters that changed instead of replacing the whole table, so Obsidian's own native table updates just that cell instead of rebuilding it. On a 1000 × 20 table, editing a cell goes from about 3 s (over 10 s at worst) to about 0.1 s.
 
 ## [0.4.0] - 2026-11-08
 

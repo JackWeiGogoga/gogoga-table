@@ -79,7 +79,7 @@ The table is a standard GFM table, with alignment in the standard `:---:` form. 
 ### Summary
 
 - **Tables up to a few hundred rows (a few thousand cells) are smooth**: on 200 rows × 10 columns (2,000 cells), everything takes under 0.3 s, and selecting a cell or pressing an arrow key takes about 20 ms.
-- **Tables with tens of thousands of cells open, scroll and select fine, but edits are slow**: on 1,000 rows × 20 columns (20,000 cells), opening takes about 0.4 s and selecting about 0.15 s; editing a cell, inserting a row, sorting or undoing takes 0.5–10 s. Most of that is Obsidian's own native table, which is just as slow without this plugin (see "Bottlenecks" below).
+- **Tables with tens of thousands of cells open, scroll, select and take cell edits fine, but structural changes are slow**: on 1,000 rows × 20 columns (20,000 cells), opening takes about 0.4 s, selecting about 0.15 s and editing a cell about 0.1 s; inserting a row, sorting or undoing takes 0.5–10 s. Most of that is Obsidian's own native table, which is just as slow without this plugin (see "Bottlenecks" below).
 - **Recommendation**: keep a table to a few thousand cells. For more data, split it into several tables, or use Obsidian Bases or a CSV file.
 
 ### Stress test results
@@ -95,7 +95,7 @@ Measured in Obsidian 1.15 (macOS, Apple Silicon) with real mouse and keyboard ev
 | Select 50 rows | 0.01 s | 0.1 s |
 | Crosshair following the mouse | — | 0.06 s |
 | Longest frame while scrolling | 0.02 s | 0.09 s |
-| Edit a cell and write it back | 0.1 s | 0.15–10 s |
+| Edit a cell and write it back | 0.1 s | 0.1 s (2–3 s for the first edit within seconds of opening the note) |
 | Insert a row | 0.15 s | 3.2 s |
 | Sort by a column | 0.1–0.26 s | 3.4–10.5 s |
 | Undo | 0.2 s | 0.5–14 s |
@@ -108,18 +108,19 @@ The same 1,000 × 20 table without this plugin, with changes of the same size ma
 | Insert a row | 3.1–3.4 s |
 | Reorder all body rows (like sorting) | 0.07–11 s |
 
-In 0.4.0 and earlier, the same 1,000 × 20 table took 1.6 s to open, 2.4 s to switch to Reading view, 0.2 s to select a cell and up to 9.5 s to undo. This version adds three optimizations:
+In 0.4.0 and earlier, the same 1,000 × 20 table took 1.6 s to open, 2.4 s to switch to Reading view, 0.2 s to select a cell and up to 9.5 s to undo. This version adds these optimizations:
 
 - Plain-text and number cells are shown directly instead of going through Markdown rendering one by one.
 - Selecting, arrow keys and the crosshair update only the cells that changed.
 - The crosshair is drawn as bands over the table instead of a style on each cell.
+- Writing back to the note changes only the characters that changed instead of replacing the whole table, so Obsidian's native table updates just that cell instead of rebuilding: editing a cell on a 20,000-cell table goes from about 3 s (over 10 s at worst) to about 0.1 s.
 
 The table processing itself is fast: on 2,000 rows × 20 columns, parsing, writing back, inserting, moving and sorting each take a few milliseconds, and finding every table in a note with 200 tables takes about 3 ms.
 
 ### Bottlenecks and limits
 
 1. **Obsidian's own native table (the main reason edits are slow).** In Live Preview, Obsidian builds its own table object for every table, even when this plugin's table covers it and it is never shown. When the table text changes:
-   - If every change falls inside a single cell, it updates only those cells.
+   - If every change falls inside a single cell, it updates only those cells. (Cell edits in this plugin write back only the changed characters, so they take this path.)
    - Inserting or deleting rows, sorting or replacing the whole table makes it rebuild the entire table right away.
 
    On a 20,000-cell table that takes 3–10 s, and it varies a lot depending on whether Obsidian has finished parsing the whole note. It happens without this plugin too: that is the native table's own speed. Obsidian skips the rebuild in only two cases: changes made by its own table editor (which carry an internal marker), and tables containing a search highlight. Both are Obsidian internals that plugins can't reach. Relying on them would break the plugin when Obsidian updates, possibly to the point of tables not showing at all, so this plugin doesn't.
