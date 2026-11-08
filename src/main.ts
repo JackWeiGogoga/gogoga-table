@@ -127,5 +127,17 @@ class TableSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           }),
       );
+    new Setting(containerEl)
+      .setName(zh ? "十字高亮" : "Crosshair highlight")
+      .setDesc(zh ? "选中格子时，把它所在的整行和整列铺一层淡色，看大表格不容易串行。「悬停时」跟着鼠标走，鼠标离开表格后回到选中的格子。" : "Tint the whole row and column of the selected cell so large tables are easier to follow. On hover follows the mouse, falling back to the selected cell when the mouse leaves the table.")
+      .addDropdown((dd) =>
+        dd
+          .addOptions(zh ? { off: "关", select: "选中格子时", hover: "选中和悬停时" } : { off: "Off", select: "On the selected cell", hover: "On selected and hovered cells" })
+          .setValue(s.crosshair)
+          .onChange(async (v) => {
+            s.crosshair = v as TableSettings["crosshair"];
+            await this.plugin.saveSettings();
+          }),
+      );
   }
 }

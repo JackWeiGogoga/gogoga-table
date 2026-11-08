@@ -9,12 +9,15 @@ export interface TableSettings {
   enabled: boolean;
   preset: "default" | "zebra" | "minimal" | "academic";
   density: "comfortable" | "compact";
+  /** 十字高亮：选中（或悬停）格子时整行整列铺一层淡色；默认关 */
+  crosshair: "off" | "select" | "hover";
 }
 
 export const DEFAULT_SETTINGS: TableSettings = {
   enabled: true,
   preset: "default",
   density: "comfortable",
+  crosshair: "off",
 };
 
 export interface TableHostFactory {
@@ -58,6 +61,7 @@ export function makeFactory(app: App, settings: () => TableSettings): TableHostF
     style: (root) => {
       root.dataset.defPreset = settings().preset;
       root.dataset.defDensity = settings().density;
+      root.dataset.cross = settings().crosshair;
       root.dispatchEvent(new Event("ggt-restyle"));
     },
   };
