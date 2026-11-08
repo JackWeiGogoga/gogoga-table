@@ -4,6 +4,9 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Added
+- Paste a table copied from Excel, WPS, Numbers, Feishu, Google Sheets or a web page into your note and it becomes a table, with the first row as the header (#1). Only content that is just a table (at least 2 rows and 2 columns) is converted; inside code blocks, math and frontmatter it pastes as before. Undo once to get back.
+
 ### Fixed
 - Long tables no longer jitter while scrolling: the sticky header used to trail one step behind every scroll and snap back. On desktop the browser now moves the header in the same frame as the scroll; older environments keep the previous behavior. (#2)
 - The sticky header now works in Reading view too; it used to stay at the top of the table there.

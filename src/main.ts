@@ -4,6 +4,7 @@ import { setLanguage, t } from "./editor/i18n";
 import { activeTableEditor, TABLE_COMMANDS } from "./editor/editor";
 import { emptyTable, serializeTable } from "./core/table";
 import { GridModal, insertTableText, textToTable } from "./obsidian/insert";
+import { canPasteTableAt, gridToTable, insertTableAtSelection, pastedGrid } from "./obsidian/paste";
 import { DEFAULT_SETTINGS, makeFactory, type TableHostFactory, type TableSettings } from "./obsidian/host";
 import { livePreviewTables } from "./obsidian/live-preview";
 import { readingProcessor } from "./obsidian/reading";
@@ -42,6 +43,16 @@ export default class TablePlugin extends Plugin {
         return true;
       },
     });
+    // 正文里粘贴 Excel、网页上的表格：直接生成表格（#1）。表格里面的粘贴由表格自己处理，不会走到这里
+    this.registerEvent(
+      this.app.workspace.on("editor-paste", (evt, editor) => {
+        if (evt.defaultPrevented || !this.settings.enabled || !evt.clipboardData) return;
+        const grid = pastedGrid(evt.clipboardData, activeDocument);
+        if (!grid || !canPasteTableAt(editor)) return;
+        evt.preventDefault();
+        insertTableAtSelection(editor, serializeTable(gridToTable(grid)));
+      }),
+    );
     // 表格操作：作用在最近选中格子的那张表上，可以绑快捷键
     for (const id of TABLE_COMMANDS) {
       this.addCommand({
