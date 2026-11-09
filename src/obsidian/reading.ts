@@ -6,7 +6,7 @@
  * 一处都找不到说明文件在别处改过，不写，并把编辑器换回文件里现在的内容，免得两边对不上。
  */
 
-import { type App, MarkdownRenderChild, type MarkdownPostProcessorContext, TFile } from "obsidian";
+import { type App, MarkdownRenderChild, type MarkdownPostProcessorContext, MarkdownView, TFile } from "obsidian";
 import { blockTable, findTables, type TableBlock, writeBlock } from "../core/find";
 import type { Table } from "../core/table";
 import { sameTable, TableEditor } from "../editor/editor";
@@ -71,12 +71,30 @@ function locate(lines: string[], base: Table, near: number): { from: number; to:
     .sort((a, b) => a.dist - b.dist);
 }
 
+/**
+ * 这一段所在笔记的原文。Obsidian 给的 getSectionInfo().text 偶尔是空字符串（2026-11-09 在用户库里遇到：
+ * 行号是对的、原文为空，阅读视图里的表格就全没接管），这时从打开着这篇笔记的视图里取，再不行读文件
+ */
+async function sectionText(app: App, ctx: MarkdownPostProcessorContext, text: string): Promise<string> {
+  if (text) return text;
+  let found = "";
+  app.workspace.iterateAllLeaves((leaf) => {
+    if (!found && leaf.view instanceof MarkdownView && leaf.view.file?.path === ctx.sourcePath) found = leaf.view.data;
+  });
+  if (found) return found;
+  const file = app.vault.getAbstractFileByPath(ctx.sourcePath);
+  return file instanceof TFile ? app.vault.cachedRead(file) : "";
+}
+
 export function readingProcessor(app: App, factory: TableHostFactory) {
-  return (el: HTMLElement, ctx: MarkdownPostProcessorContext): void => {
+  return async (el: HTMLElement, ctx: MarkdownPostProcessorContext): Promise<void> => {
     if (!factory.enabled()) return;
     const info = ctx.getSectionInfo(el);
     if (!info) return;
-    const lines = info.text.split("\n");
+    // 原文正常拿得到时同步处理（不多等一拍，免得先闪一下原生表格）
+    const text = info.text || (await sectionText(app, ctx, info.text));
+    if (!text) return;
+    const lines = text.split("\n");
     const blocks = findTables(lines).filter((b) => b.start >= info.lineStart && b.start <= info.lineEnd);
     if (!blocks.length) return;
     // Obsidian 自己画成 <table> 的：顶格的，和列表里前面空一行的。按顺序和渲染出来的 <table> 对上

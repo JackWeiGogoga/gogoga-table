@@ -71,6 +71,10 @@ class TableWidget extends WidgetType {
   updateDOM(dom: HTMLElement): boolean {
     const editor = (dom as HTMLElement & { ggtEditor?: TableEditor }).ggtEditor;
     if (!editor) return false;
+    // 沿用的元素可能是别的缩进层数的表格留下的（比如换了笔记，同一位置原来是顶格的表）：缩进跟着这一张走
+    dom.classList.toggle("is-in-list", this.depth > 0);
+    if (this.depth) dom.style.setProperty("--ggt-depth", String(this.depth));
+    else dom.style.removeProperty("--ggt-depth");
     editor.update(this.table);
     this.editor = editor;
     return true;
