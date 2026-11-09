@@ -10,6 +10,9 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Changed
 - Deleting rows and columns follows the selection (#4): after selecting several cells, the right-click menu (and the row / column handle menus) offers **Delete 2 rows** / **Delete 3 columns** and so on, instead of greying out Delete row and Delete column. The header row still can't be deleted, and at least one data row and one column are kept.
 
+### Fixed
+- With crosshair highlight on, the row highlight now grows with the cell when the text wraps while editing, instead of covering only the first line.
+
 ## [0.5.1] - 2026-11-09
 
 ### Fixed
