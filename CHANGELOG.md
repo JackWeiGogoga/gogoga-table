@@ -15,6 +15,7 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 - In reading view, the table menu button and the row handle are no longer cut in half on the left: Obsidian's table wrapper used to clip everything outside the table border. Tables that don't scroll sideways now also stick their header natively in reading view.
 - Reading view tables are taken over again when Obsidian passes an empty note text to plugins (seen in a real vault after reloading): the text is read from the open note instead, so tables don't silently stay native.
 - A table inside a list item could lose its indent in Live Preview and line up with the left margin instead of the list text, when the same spot had held a top-level table before (for example after switching notes).
+- In reading view, tables far down a long note (rendered before Obsidian attaches them to the page) now get a sticky header too; before, the header stayed put once you scrolled to them.
 
 ## [0.6.0] - 2026-11-09
 
