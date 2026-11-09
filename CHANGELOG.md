@@ -10,6 +10,9 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Changed
 - Drag handles work like native tables (#2): the row handle appears when the mouse is in the first column, the column handle when it's on the header row, instead of on every hovered cell. Handles hide while scrolling and come back when the mouse moves, so they no longer jump with the sticky header or lag behind the row under the mouse.
 
+### Fixed
+- The sticky header no longer shakes by a pixel when scrolling quickly with a trackpad (#2): it now moves in whole device pixels, rounded the same way the browser scrolls the page. With the header stuck to the top, the column handle shows fully inside the header instead of being cut in half.
+
 ## [0.6.0] - 2026-11-09
 
 ### Added
