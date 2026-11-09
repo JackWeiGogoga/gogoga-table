@@ -7,6 +7,9 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - **Show formatting while editing a cell** setting (off by default): the cell editor becomes a CodeMirror editor like gogoga Mind Map's node editor — bold, italic, text colors, highlighter colors and underline show as formatted while you type, tags like `<span style=…>` stay hidden and are kept paired when you delete text, and long colored text no longer turns into a wall of tags. Typing or using an input method on a selected cell still starts editing right away. The editor is only created for a table when you first select one of its cells.
 
+### Changed
+- Drag handles work like native tables (#2): the row handle appears when the mouse is in the first column, the column handle when it's on the header row, instead of on every hovered cell. Handles hide while scrolling and come back when the mouse moves, so they no longer jump with the sticky header or lag behind the row under the mouse.
+
 ## [0.6.0] - 2026-11-09
 
 ### Added
