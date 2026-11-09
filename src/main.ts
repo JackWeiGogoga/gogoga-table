@@ -151,6 +151,19 @@ class TableSettingTab extends PluginSettingTab {
           }),
       );
     new Setting(containerEl)
+      .setName(zh ? "编辑格子时直接显示格式" : "Show formatting while editing a cell")
+      .setDesc(
+        zh
+          ? "编辑格子时，加粗、斜体、文字颜色、荧光笔、下划线直接显示效果，<span style=…> 这类标签藏起来，删字时标签保持成对，和 gogoga Mind Map 的节点编辑一样。关掉时显示原始的 Markdown 和 HTML。"
+          : "While editing a cell, bold, italic, text colors, highlighter colors and underline show as formatted, with tags like <span style=…> hidden and kept paired when you delete text, as in gogoga Mind Map's node editor. When off, the raw Markdown and HTML are shown.",
+      )
+      .addToggle((tg) =>
+        tg.setValue(s.richEdit).onChange(async (v) => {
+          s.richEdit = v;
+          await this.plugin.saveSettings();
+        }),
+      );
+    new Setting(containerEl)
       .setName(zh ? "编辑格子时选中文字显示格式栏" : "Format bar when selecting text in a cell")
       .setDesc(
         zh

@@ -4,6 +4,9 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Added
+- **Show formatting while editing a cell** setting (off by default): the cell editor becomes a CodeMirror editor like gogoga Mind Map's node editor — bold, italic, text colors, highlighter colors and underline show as formatted while you type, tags like `<span style=…>` stay hidden and are kept paired when you delete text, and long colored text no longer turns into a wall of tags. Typing or using an input method on a selected cell still starts editing right away. The editor is only created for a table when you first select one of its cells.
+
 ## [0.6.0] - 2026-11-09
 
 ### Added
