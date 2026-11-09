@@ -4,6 +4,9 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Fixed
+- In notes with tables, clicking text below the tables could land on the next line, for example clicking the paragraph right above a heading selected the heading instead. Each table's top and bottom margin wasn't counted in its height, so every table shifted the lines after it by 18 px.
+
 ## [0.5.0] - 2026-11-08
 
 ### Added
