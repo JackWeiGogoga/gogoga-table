@@ -150,5 +150,18 @@ class TableSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           }),
       );
+    new Setting(containerEl)
+      .setName(zh ? "编辑格子时选中文字显示格式栏" : "Format bar when selecting text in a cell")
+      .setDesc(
+        zh
+          ? "编辑格子时选中一段文字，上方浮出一排按钮：加粗、斜体、删除线、下划线、高亮、文字颜色、荧光笔和清除，和 gogoga Mind Map 的格式栏一样。不打开也能用快捷键：⌘B、⌘I、⌘U、⌘⇧X、⌘⇧H。"
+          : "While editing a cell, selecting text shows a bar above it: bold, italic, strikethrough, underline, highlight, text colors, highlighter colors and clear, the same as in gogoga Mind Map. Without it, use the shortcuts: Mod+B, Mod+I, Mod+U, Mod+Shift+X, Mod+Shift+H.",
+      )
+      .addToggle((tg) =>
+        tg.setValue(s.formatBar).onChange(async (v) => {
+          s.formatBar = v;
+          await this.plugin.saveSettings();
+        }),
+      );
   }
 }

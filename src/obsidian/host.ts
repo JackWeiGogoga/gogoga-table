@@ -11,13 +11,20 @@ export interface TableSettings {
   density: "comfortable" | "compact";
   /** 十字高亮：选中（或悬停）格子时整行整列铺一层淡色；默认关 */
   crosshair: "off" | "select" | "hover";
+  /** 编辑格子时选中文字浮出格式栏（加粗、颜色、荧光笔……）；默认关 */
+  formatBar: boolean;
 }
+
+/** 格式栏的颜色：和 gogoga Mind Map 的默认「常用文字颜色 / 荧光笔颜色」一样 */
+export const FORMAT_TEXT_COLORS = ["#e03e3e", "#2f80ed", "#27ae60"];
+export const FORMAT_HIGHLIGHT_COLORS = ["#ffd43b99", "#69db7c99", "#ff8fab99"];
 
 export const DEFAULT_SETTINGS: TableSettings = {
   enabled: true,
   preset: "default",
   density: "comfortable",
   crosshair: "off",
+  formatBar: false,
 };
 
 export interface TableHostFactory {
@@ -38,6 +45,7 @@ export function makeFactory(app: App, settings: () => TableSettings): TableHostF
         void MarkdownRenderer.render(app, md, el, sourcePath, owner);
       },
       setIcon: (el, name) => setIcon(el, name),
+      formatColors: () => (settings().formatBar ? { text: FORMAT_TEXT_COLORS, highlight: FORMAT_HIGHLIGHT_COLORS } : null),
       // [[ 补全：笔记按名字找（名字开头的排前面），插的是 Obsidian 生成的最短链接
       suggestLinks: (query) => {
         const q = query.toLowerCase();
