@@ -4,6 +4,12 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Added
+- Two new items in the table's corner menu, **Indent (under the list item above)** and **Outdent (move out of the list)**. In Live Preview the table is drawn over its lines, so Tab can't indent it; now the whole table (with its comment) can be moved under the nearest list item above, becoming that item's note (in gogoga Mind Map, that node's note), or moved out after the list. ⌘Z undoes it.
+
+### Fixed
+- In reading view, an indented table written right below a list item (the way gogoga Mind Map stores node notes) is now drawn as a table instead of showing `| a | b |` source. Before, this only worked with a blank line between them.
+
 ## [0.7.0] - 2026-11-10
 
 ### Added

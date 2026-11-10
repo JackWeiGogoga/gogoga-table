@@ -9,6 +9,7 @@
 import { type App, MarkdownRenderChild, type MarkdownPostProcessorContext, MarkdownView, TFile } from "obsidian";
 import { blockTable, findTables, type TableBlock, writeBlock } from "../core/find";
 import type { Table } from "../core/table";
+import { canIndent, indentTable } from "../core/indent";
 import { sameTable, TableEditor } from "../editor/editor";
 import type { TableHostFactory } from "./host";
 
@@ -58,6 +59,26 @@ function spliceLines(p: HTMLElement, first: number, count: number, holder: HTMLE
   if (hasRest) holder.after(after);
   (holder as HTMLElement & { ggtSplit?: HTMLElement[] }).ggtSplit = [p, ...(hasRest ? [after] : [])];
   return original;
+}
+
+/**
+ * 列表项自己的那段文字：松散列表在 <p> 里；紧凑列表（脑图存的就是这种）直接写在 <li> 里，
+ * 把子列表前面的文字节点包进一个 span 再按行切（项目符号、折叠箭头一起包进去，算第一行）
+ */
+function leadText(li: HTMLElement): HTMLElement | null {
+  const p = Array.from(li.children).find((c): c is HTMLElement => c.tagName === "P");
+  if (p) return p;
+  const lead: ChildNode[] = [];
+  for (const n of Array.from(li.childNodes)) {
+    if (n.nodeName === "UL" || n.nodeName === "OL") break;
+    lead.push(n);
+  }
+  if (!lead.some((n) => n.nodeName === "BR")) return null;
+  const span = li.ownerDocument.createElement("span");
+  span.className = "ggt-li-text";
+  lead[0].before(span);
+  span.append(...lead);
+  return span;
 }
 
 /** 文件里和 base 内容一样的表格，按离 near 行的远近排 */
@@ -116,10 +137,15 @@ export function readingProcessor(app: App, factory: TableHostFactory) {
     for (const block of blocks) {
       if (native.includes(block) || block.owner === null) continue;
       const li = el.querySelector<HTMLElement>(`li[data-line="${block.owner - info.lineStart}"]`);
-      const p = li && Array.from(li.children).find((c): c is HTMLElement => c.tagName === "P");
+      if (!li || li.closest(".ggt")) continue;
       const owner = block.owner;
-      if (!p || p.closest(".ggt")) continue;
-      slots.push({ block, mount: (holder) => spliceLines(p, block.start - owner, block.end - block.start, holder) });
+      slots.push({
+        block,
+        mount: (holder) => {
+          const p = leadText(li);
+          return p ? spliceLines(p, block.start - owner, block.end - block.start, holder) : null;
+        },
+      });
     }
     for (const { block, mount } of slots) {
       const table = blockTable(lines, block);
@@ -159,6 +185,20 @@ export function readingProcessor(app: App, factory: TableHostFactory) {
               }, 800);
             });
         },
+        // 往里缩 / 移出列表：按现在显示的这张在文件里找到，算出新文件
+        indentTable: (dir) => {
+          const file = app.vault.getAbstractFileByPath(ctx.sourcePath);
+          if (!(file instanceof TFile)) return;
+          const near = ctx.getSectionInfo(el)?.lineStart ?? block.start;
+          const base = editor.getTable();
+          void app.vault.process(file, (data) => {
+            const all = data.split("\n");
+            const at = locate(all, base, near)[0];
+            const next = at && indentTable(all, at.block, dir);
+            return next ? next.join("\n") : data;
+          });
+        },
+        canIndentTable: (dir) => canIndent(lines, block, dir),
         // 删除整张表：按现在显示的这张在文件里找到，连同注释删掉；前后都是空行时多删一个
         onDeleteTable: () => {
           const file = app.vault.getAbstractFileByPath(ctx.sourcePath);

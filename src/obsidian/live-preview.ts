@@ -11,6 +11,7 @@ import { redo, undo } from "@codemirror/commands";
 import { Component, editorInfoField, editorLivePreviewField } from "obsidian";
 import { blockTable, findTables, type TableBlock, writeBlock } from "../core/find";
 import { diffText } from "../core/diff";
+import { canIndent, indentTable } from "../core/indent";
 import { parseTable, type Table } from "../core/table";
 import { sameTable, TableEditor } from "../editor/editor";
 import type { TableHostFactory } from "./host";
@@ -59,6 +60,11 @@ class TableWidget extends WidgetType {
       redo: () => redo(view),
       onLeave: (where) => leave(view, wrap, where),
       onDeleteTable: () => removeTable(view, wrap),
+      indentTable: (dir) => indentAt(view, wrap, dir),
+      canIndentTable: (dir) => {
+        const at = blockAt(view, wrap);
+        return !!at && canIndent(docLines(view.state.doc), at.block, dir);
+      },
     }));
     this.factory.style(editor.root);
     (wrap as HTMLElement & { ggtCleanup?: () => void }).ggtCleanup = this.factory.attach(editor);
@@ -121,6 +127,16 @@ function writeBack(view: EditorView, dom: HTMLElement, table: Table): void {
   if (old === text) return;
   // 只写回变了的那几个字：Obsidian 背后的原生表格才走局部更新，不整张重建（大表上差几倍）
   view.dispatch({ changes: diffText(old, text, at.from), userEvent: "input.table" });
+}
+
+/** 整张表往里缩 / 移出列表：按行算出新文件，只改变了的那几处；走编辑器事务，⌘Z 能撤回 */
+function indentAt(view: EditorView, dom: HTMLElement, dir: 1 | -1): void {
+  const at = blockAt(view, dom);
+  if (!at) return;
+  const doc = view.state.doc;
+  const next = indentTable(docLines(doc), at.block, dir);
+  if (!next) return;
+  view.dispatch({ changes: diffText(doc.toString(), next.join("\n")), userEvent: "input.table" });
 }
 
 /** 删掉整张表（连同下面的注释），表格前后多出来的一个空行也去掉；走编辑器事务，⌘Z 能撤回 */
