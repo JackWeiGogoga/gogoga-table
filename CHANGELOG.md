@@ -9,6 +9,7 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ### Fixed
 - In reading view, an indented table written right below a list item (the way gogoga Mind Map stores node notes) is now drawn as a table instead of showing `| a | b |` source. Before, this only worked with a blank line between them.
+- Copying part of a colored text while editing a cell no longer pastes as a half `<span …>` tag, and Shift+Enter inside colored text keeps each line complete.
 
 ## [0.7.0] - 2026-11-10
 
