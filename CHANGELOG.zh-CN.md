@@ -4,6 +4,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-10
+
 ### 新增
 - 设置「编辑格子时直接显示格式」（默认关）：格子的编辑框换成和 gogoga Mind Map 节点一样的 CodeMirror 编辑器，加粗、斜体、文字颜色、荧光笔、下划线在编辑时直接显示效果，`<span style=…>` 这类标签藏起来，删字时保持成对，长段的彩色文字不会再变成一大串标签。选中格子直接打字、用输入法打字，照样马上进入编辑。编辑器在第一次选中这张表的格子时才创建。
 
@@ -78,7 +80,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 ### 新增
 - 第一个版本：实时预览和阅读视图里的 Markdown 表格换成 Notion 风格的表格。点格子编辑，Enter / Tab 跳格，加行加列，行列手柄和右键菜单，拖列宽，七种底色，三套样式和两档行距；手机上点一下编辑、长按出菜单。选一片格子一起设底色、对齐、清空；和 Excel、飞书、网页互相复制粘贴；合并单元格；拖动行列手柄调整顺序；长表格表头吸顶，宽表格左右有滚动提示。下拉填充；表格左上角菜单（单表样式、三线表、标题列、整表对齐、平均分布列宽、撑满页面）；按列排序；复制行列、一次插入多行；勾选框；文字颜色；合计行；状态列；编辑格子时的格式快捷键和 [[ 链接、# 标签补全；插入表格、文字转表格等命令。复制带样式的 HTML。兼容 Advanced Tables 的公式注释和块标识。文件仍是标准 Markdown 表格，列宽、颜色、合并等存在表格下面的一行注释里。
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.6.0...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.7.0...HEAD
+[0.7.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.6.0...0.7.0
 [0.6.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.5.1...0.6.0
 [0.5.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.4.1...0.5.0
