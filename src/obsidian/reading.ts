@@ -6,7 +6,7 @@
  * 一处都找不到说明文件在别处改过，不写，并把编辑器换回文件里现在的内容，免得两边对不上。
  */
 
-import { type App, MarkdownRenderChild, type MarkdownPostProcessorContext, MarkdownView, TFile } from "obsidian";
+import { type App, MarkdownRenderChild, type MarkdownPostProcessorContext, MarkdownRenderer, MarkdownView, TFile } from "obsidian";
 import { blockTable, findTables, type TableBlock, writeBlock } from "../core/find";
 import type { Table } from "../core/table";
 import { canIndent, indentTable } from "../core/indent";
@@ -107,11 +107,101 @@ async function sectionText(app: App, ctx: MarkdownPostProcessorContext, text: st
   return file instanceof TFile ? app.vault.cachedRead(file) : "";
 }
 
+/** 渲染出来的原生表格有几行几列（表头算一行） */
+function domSize(tableEl: HTMLTableElement): [number, number] {
+  const rows = Array.from(tableEl.rows);
+  return [rows.length, rows[0]?.cells.length ?? 0];
+}
+
+/**
+ * 导出 PDF：Obsidian 把整篇笔记一次渲染成一大块再调后处理，getSectionInfo 一律是 null，拿不到行号。
+ * 这时读整篇原文，把顶格（或列表里前面空一行）的表格按顺序和页面上的原生表格对上：
+ * 引用块、callout 里的不归我们管，跳过；行数列数对不上的那张不换，保持原生，不会把别的表的样式套上去。
+ * 只读：不写回、没有手柄。格子里的 Markdown 异步渲染，把等待交给 Obsidian（ctx.promises），印之前会等它们画完
+ */
+async function exportProcessor(app: App, factory: TableHostFactory, el: HTMLElement, ctx: MarkdownPostProcessorContext): Promise<void> {
+  const file = app.vault.getAbstractFileByPath(ctx.sourcePath);
+  if (!(file instanceof TFile)) return;
+  const tables = Array.from(el.querySelectorAll<HTMLTableElement>("table")).filter(
+    (t) => !t.closest(".ggt, blockquote, .callout, .internal-embed, .markdown-embed"),
+  );
+  if (!tables.length) return;
+  const lines = (await app.vault.cachedRead(file)).split("\n");
+  const blocks = findTables(lines).filter((b) => !b.indent || lines[b.start - 1]?.trim() === "");
+  const promises = (ctx as MarkdownPostProcessorContext & { promises?: Promise<unknown>[] }).promises;
+  const local: Promise<unknown>[] = [];
+  const sized: TableEditor[] = [];
+  let bi = 0;
+  for (const tableEl of tables) {
+    const [rows, cols] = domSize(tableEl);
+    // 往后找第一张行列数一样的；中间对不上的（Obsidian 没当成表格的写法）跳过
+    let hit = -1;
+    for (let j = bi; j < blocks.length; j++) {
+      const t = blockTable(lines, blocks[j]);
+      if (t && t.cells.length === rows && (t.cells[0]?.length ?? 0) === cols) {
+        hit = j;
+        break;
+      }
+    }
+    if (hit < 0) continue;
+    const table = blockTable(lines, blocks[hit]);
+    bi = hit + 1;
+    if (!table) continue;
+    const holder = createDiv({ cls: "ggt-reading" });
+    tableEl.replaceWith(holder);
+    const child = new TableChild(holder);
+    child.original = tableEl;
+    ctx.addChild(child);
+    const host = factory.host(ctx.sourcePath, child, { onChange: () => {}, readonly: true });
+    const render = host.renderMarkdown;
+    if (render) {
+      host.renderMarkdown = (cell, md) => {
+        const p = MarkdownRenderer.render(app, md, cell, ctx.sourcePath, child);
+        local.push(p);
+        promises?.push(p);
+      };
+    }
+    const editor = new TableEditor(holder, table, host);
+    child.editor = editor;
+    factory.style(editor.root);
+    if (table.meta.w?.some((w) => w)) sized.push(editor);
+  }
+  if (!sized.length) return;
+  await Promise.all(local);
+  for (const editor of sized) fitWidths(editor.root);
+}
+
+/**
+ * 设了列宽的表格：列宽加起来可能比纸宽（列宽在编辑器里是按像素定的，屏幕上能横向滚动，纸上不行）。
+ * 量出每列现在的宽度，换成百分比，表格宽度取「原来的总宽」和「页面宽」里小的那个，各列按比例缩
+ */
+function fitWidths(root: HTMLElement): void {
+  const tableEl = root.querySelector<HTMLTableElement>("table.ggt-table");
+  const cols = tableEl ? Array.from(tableEl.querySelectorAll<HTMLElement>("colgroup > col")) : [];
+  if (!tableEl || !cols.length) return;
+  const widths = cols.map((_, c) => {
+    let w = 0;
+    tableEl.querySelectorAll<HTMLTableCellElement>(`.ggt-cell[data-c="${c}"]`).forEach((cell) => {
+      if (cell.colSpan === 1) w = Math.max(w, cell.getBoundingClientRect().width);
+    });
+    return w;
+  });
+  const total = widths.reduce((a, b) => a + b, 0);
+  if (!total || widths.some((w) => !w)) return;
+  cols.forEach((col, c) => (col.style.width = `${((widths[c] / total) * 100).toFixed(3)}%`));
+  tableEl.style.tableLayout = "fixed";
+  tableEl.style.width = `min(100%, ${Math.ceil(total)}px)`;
+}
+
 export function readingProcessor(app: App, factory: TableHostFactory) {
   return async (el: HTMLElement, ctx: MarkdownPostProcessorContext): Promise<void> => {
     if (!factory.enabled()) return;
     const info = ctx.getSectionInfo(el);
-    if (!info) return;
+    if (!info) {
+      // 导出 PDF 时整篇一次渲染，el 是整篇的容器（带 markdown-preview-view）；别的地方拿不到行号的照旧不管
+      if (el.closest(".print")) await exportProcessor(app, factory, el, ctx);
+      return;
+    }
     // 原文正常拿得到时同步处理（不多等一拍，免得先闪一下原生表格）
     const text = info.text || (await sectionText(app, ctx, info.text));
     if (!text) return;

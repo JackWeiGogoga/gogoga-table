@@ -329,6 +329,9 @@
   .ggt .ggt-scroll { -webkit-mask-image: none !important; mask-image: none !important; }
   .ggt .ggt-cell.is-selected { box-shadow: none !important; }
   .ggt-scroll { overflow: visible !important; }
+  /* 纸宽有限：表格最宽到页面宽，不让右边被裁掉（设了列宽的表格导出时按比例换成百分比，见 reading.ts） */
+  .ggt .ggt-table { max-width: 100% !important; }
+  .ggt .ggt-cell { min-width: 0; }
 }
 
 /* 勾选框：和 Obsidian 任务列表的勾选框一个样子 */
