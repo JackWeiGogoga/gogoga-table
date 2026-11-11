@@ -216,12 +216,18 @@ export function livePreviewTables(factory: TableHostFactory): Extension {
       if (!deco || deco.size === 0) return tr;
       const doc = tr.state.doc;
       let moved = false;
+      // 表格（连同注释）在笔记最后、用户点了表格下面：笔记末尾补一个换行，光标放到那里（#5）
+      let append = false;
+      const pointer = !tr.docChanged && tr.isUserEvent("select.pointer");
       const ranges = tr.state.selection.ranges.map((r) => {
         let head = r.head;
         let anchor = r.anchor;
-        // 表格和下面的注释是相邻的两段，挪出一段可能落进下一段：一直挪到不在任何一段里
+        // 表格和下面的注释是相邻的两段，挪出一段可能落进下一段：一直挪到不在任何一段里。
+        // 往后挪到了笔记末尾就改成往前，并且一路往前跨过相邻的段：只退到注释前面会落在表格最后一行的行尾，
+        // 光标还在表格里，按回车就把表格和注释拆开，注释露出来、颜色列宽全丢（#5）
         const out = (pos: number): number => {
           let res = pos;
+          let back = false;
           for (let guard = 0; guard < 8; guard++) {
             let hit: { from: number; to: number } | null = null;
             deco.between(res, res, (from, to) => {
@@ -234,10 +240,15 @@ export function livePreviewTables(factory: TableHostFactory): Extension {
             if (!hit) break;
             const h: { from: number; to: number } = hit;
             moved = true;
-            if (h.to < doc.length) res = doc.lineAt(h.to + 1).from;
+            if (!back && h.to < doc.length) res = doc.lineAt(h.to + 1).from;
             else {
-              res = Math.max(0, h.from - 1);
-              break;
+              if (!back && pointer && r.empty && pos >= h.from) {
+                append = true;
+                return doc.length + 1;
+              }
+              back = true;
+              if (h.from === 0) return 0;
+              res = h.from - 1;
             }
           }
           return res;
@@ -247,6 +258,15 @@ export function livePreviewTables(factory: TableHostFactory): Extension {
         return EditorSelection.range(anchor, head);
       });
       if (!moved) return tr;
+      if (append) {
+        return {
+          changes: { from: doc.length, insert: "\n" },
+          selection: EditorSelection.create(ranges, tr.state.selection.mainIndex),
+          effects: tr.effects,
+          scrollIntoView: true,
+          annotations: [Transaction.userEvent.of("input.table")],
+        };
+      }
       // 整个换掉这次更新（不是在后面追加一次）：别的扩展从头到尾都看不到光标在表格里
       return {
         changes: tr.changes,
@@ -277,6 +297,12 @@ export function livePreviewTables(factory: TableHostFactory): Extension {
           if (!((value.spec as { widget?: unknown }).widget instanceof TableWidget)) return;
           if (toA < from || fromA > to) return;
           inTable = true;
+          // 改动超出了表格这几行（比如外部改文件时连表格后面的注释、正文一起换掉）：不是重排，放过。
+          // 以前这里只比较表格本身，表格在笔记最后时整次外部更新都会被丢掉，编辑器和磁盘不一致
+          if (fromA < from || toA > to) {
+            other = true;
+            return;
+          }
           const before = parseAt(oldDoc, from, to);
           const nf = tr.changes.mapPos(from, -1);
           const nt = tr.changes.mapPos(to, 1);
