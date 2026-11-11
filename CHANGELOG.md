@@ -4,6 +4,12 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-11-12
+
+### Fixed
+- **Export to PDF** now prints tables the way they look in the note: cell colors, column widths, merged cells, the table style and alignment. Before, the PDF showed Obsidian's plain table. Handles, buttons and selection are not printed.
+- In the PDF, a table whose set column widths add up to more than the page is shrunk to the page width, keeping the columns' proportions, instead of being cut off on the right.
+
 ## [0.8.1] - 2026-11-11
 
 ### Fixed
