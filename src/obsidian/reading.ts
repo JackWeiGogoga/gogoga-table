@@ -153,8 +153,7 @@ async function exportProcessor(app: App, factory: TableHostFactory, el: HTMLElem
     child.original = tableEl;
     ctx.addChild(child);
     const host = factory.host(ctx.sourcePath, child, { onChange: () => {}, readonly: true });
-    const render = host.renderMarkdown;
-    if (render) {
+    if (host.renderMarkdown) {
       host.renderMarkdown = (cell, md) => {
         const p = MarkdownRenderer.render(app, md, cell, ctx.sourcePath, child);
         local.push(p);
@@ -188,9 +187,8 @@ function fitWidths(root: HTMLElement): void {
   });
   const total = widths.reduce((a, b) => a + b, 0);
   if (!total || widths.some((w) => !w)) return;
-  cols.forEach((col, c) => (col.style.width = `${((widths[c] / total) * 100).toFixed(3)}%`));
-  tableEl.style.tableLayout = "fixed";
-  tableEl.style.width = `min(100%, ${Math.ceil(total)}px)`;
+  cols.forEach((col, c) => col.setCssStyles({ width: `${((widths[c] / total) * 100).toFixed(3)}%` }));
+  tableEl.setCssStyles({ tableLayout: "fixed", width: `min(100%, ${Math.ceil(total)}px)` });
 }
 
 export function readingProcessor(app: App, factory: TableHostFactory) {
