@@ -1,7 +1,7 @@
 {
   "id": "gogoga-table",
   "name": "gogoga Table",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "minAppVersion": "1.8.7",
   "description": "Notion-style tables for Markdown: click a cell to edit, resize columns, color cells. Files stay plain Markdown tables.",
   "author": "jackwei",
