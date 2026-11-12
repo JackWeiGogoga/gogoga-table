@@ -1,6 +1,6 @@
 {
   "name": "gogoga-table",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "description": "飞书 / Notion 式的 Obsidian 表格：好看、好用，文件仍是标准 Markdown 表格。",
   "private": true,
   "type": "module",
