@@ -7,9 +7,9 @@
 import type { Editor } from "obsidian";
 import type { EditorView } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
-import { fromTSV } from "../core/clipboard";
+import { fromTSV, sourceFromHTML } from "../core/clipboard";
 import { findTables } from "../core/find";
-import { emptyTable, type Table } from "../core/table";
+import { emptyTable, parseMetaLine, parseTable, type Table } from "../core/table";
 import { gridFromClipboard } from "../editor/editor";
 
 const squash = (s: string) => s.replace(/\s+/g, "");
@@ -40,6 +40,22 @@ export function pastedGrid(data: DataTransfer, doc: Document): string[][] | null
   if (!grid || grid.length < 2) return null;
   const width = Math.max(...grid.map((r) => r.length));
   return width >= 2 ? grid : null;
+}
+
+/**
+ * 从我们自己的表格复制来的（HTML 里藏着原文）：返回表格和设置注释的原文，粘进正文原样还原颜色、列宽、合并（#8）。
+ * 原文要能读成一张表（至少 2 行），不然返回 null 走普通的粘贴
+ */
+export function pastedSource(data: DataTransfer): string[] | null {
+  const html = data.getData("text/html");
+  if (!html || !/data-ggt="1"/.test(html)) return null;
+  const lines = sourceFromHTML(html);
+  if (!lines) return null;
+  const last = lines[lines.length - 1];
+  const meta = parseMetaLine(last);
+  const body = meta ? lines.slice(0, -1) : lines;
+  const t = parseTable(body, meta);
+  return t && t.cells.length >= 2 ? lines : null;
 }
 
 /** 第一行当表头，列数按最多的那行补齐 */

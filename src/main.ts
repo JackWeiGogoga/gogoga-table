@@ -4,7 +4,7 @@ import { setLanguage, t } from "./editor/i18n";
 import { activeTableEditor, TABLE_COMMANDS } from "./editor/editor";
 import { emptyTable, serializeTable } from "./core/table";
 import { GridModal, insertTableText, textToTable } from "./obsidian/insert";
-import { canPasteTableAt, gridToTable, insertTableAtSelection, pastedGrid } from "./obsidian/paste";
+import { canPasteTableAt, gridToTable, insertTableAtSelection, pastedGrid, pastedSource } from "./obsidian/paste";
 import { DEFAULT_SETTINGS, makeFactory, type TableHostFactory, type TableSettings } from "./obsidian/host";
 import { livePreviewTables } from "./obsidian/live-preview";
 import { readingProcessor } from "./obsidian/reading";
@@ -47,10 +47,13 @@ export default class TablePlugin extends Plugin {
     this.registerEvent(
       this.app.workspace.on("editor-paste", (evt, editor) => {
         if (evt.defaultPrevented || !this.settings.enabled || !evt.clipboardData) return;
-        const grid = pastedGrid(evt.clipboardData, activeDocument);
-        if (!grid || !canPasteTableAt(editor)) return;
+        // 从我们的表格复制来的：表格连同颜色、列宽、合并原样贴上（#8）
+        const source = pastedSource(evt.clipboardData);
+        const grid = source ? null : pastedGrid(evt.clipboardData, activeDocument);
+        const lines = source ?? (grid ? serializeTable(gridToTable(grid)) : null);
+        if (!lines || !canPasteTableAt(editor)) return;
         evt.preventDefault();
-        insertTableAtSelection(editor, serializeTable(gridToTable(grid)));
+        insertTableAtSelection(editor, lines);
       }),
     );
     // 表格操作：作用在最近选中格子的那张表上，可以绑快捷键

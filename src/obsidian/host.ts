@@ -1,6 +1,6 @@
 /** 实时预览、阅读视图共用：用 Obsidian 的能力（Markdown 渲染、图标、设置）拼出编辑器的宿主 */
 
-import { type App, type Component, MarkdownRenderer, setIcon } from "obsidian";
+import { type App, type Component, MarkdownRenderer, Notice, setIcon } from "obsidian";
 import type { EditorHost, TableEditor } from "../editor/editor";
 import { guardEditorHotkeys } from "./keys";
 
@@ -48,6 +48,7 @@ export function makeFactory(app: App, settings: () => TableSettings): TableHostF
         void MarkdownRenderer.render(app, md, el, sourcePath, owner);
       },
       setIcon: (el, name) => setIcon(el, name),
+      notice: (message) => new Notice(message),
       richEdit: () => settings().richEdit,
       formatColors: () => (settings().formatBar ? { text: FORMAT_TEXT_COLORS, highlight: FORMAT_HIGHLIGHT_COLORS } : null),
       // [[ 补全：笔记按名字找（名字开头的排前面），插的是 Obsidian 生成的最短链接
