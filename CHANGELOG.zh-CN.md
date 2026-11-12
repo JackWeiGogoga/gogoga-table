@@ -4,6 +4,16 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-11-12
+
+### 新增
+- 格子里能粘贴图片（#9）：截图或复制的图片，在选中的格子或编辑中的格子里按 Ctrl/Cmd+V，按 Obsidian 的附件设置存好，格子里插入 `![[图片]]`。只选中格子时接在原有内容后面，不覆盖。格子里的图片最宽 320 像素，不会把整列撑开；写成 `![[图片|100]]` 可以指定宽度。
+
+### 修复
+- 格子里的双链点了打不开（#9）。现在点一下在当前标签打开，Ctrl/Cmd 点在新标签打开，中键点也行；按住 Ctrl/Cmd 悬停能预览。
+- 复制到 Word（#8）：暗色主题下复制，表头、底色、状态标签会带着暗色主题的深色过去，在白纸上很难看。现在复制时颜色一律按浅色主题取，半透明的颜色换成叠在白底上的实色。
+- 「复制为 Markdown 表格」粘到 Word 是一段文字，不是表格（#8）。现在同时带一份不带颜色的普通表格，Word、邮件里粘出来是表格；粘到 Obsidian 里还是纯 Markdown 表格。
+
 ## [0.9.0] - 2026-11-12
 
 ### 新增
@@ -121,7 +131,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 ### 新增
 - 第一个版本：实时预览和阅读视图里的 Markdown 表格换成 Notion 风格的表格。点格子编辑，Enter / Tab 跳格，加行加列，行列手柄和右键菜单，拖列宽，七种底色，三套样式和两档行距；手机上点一下编辑、长按出菜单。选一片格子一起设底色、对齐、清空；和 Excel、飞书、网页互相复制粘贴；合并单元格；拖动行列手柄调整顺序；长表格表头吸顶，宽表格左右有滚动提示。下拉填充；表格左上角菜单（单表样式、三线表、标题列、整表对齐、平均分布列宽、撑满页面）；按列排序；复制行列、一次插入多行；勾选框；文字颜色；合计行；状态列；编辑格子时的格式快捷键和 [[ 链接、# 标签补全；插入表格、文字转表格等命令。复制带样式的 HTML。兼容 Advanced Tables 的公式注释和块标识。文件仍是标准 Markdown 表格，列宽、颜色、合并等存在表格下面的一行注释里。
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.9.0...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.9.1...HEAD
+[0.9.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.9.0...0.9.1
 [0.9.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.8.4...0.9.0
 [0.8.4]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.8.3...0.8.4
 [0.8.3]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.8.2...0.8.3

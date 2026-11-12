@@ -50,7 +50,7 @@ It works as soon as it's on: Markdown tables in Live Preview and Reading view be
 - **Commands**: Insert table (pick the size on a grid), Convert selected text (CSV or tab-separated) to table, and row/column insert, duplicate, delete, sort, merge, align and more, all in the command palette and bindable to hotkeys.
 - **Long and wide tables**: the header sticks to the top as you scroll down, and a soft shadow on either side shows when a wide table can scroll sideways.
 - **Mobile**: tap a cell to edit, long-press for the menu, swipe to scroll as usual; after tapping a cell its row and column handles appear, and you can drag them with a finger.
-- Bold, links, `[[link\|alias]]`, tags and math render inside cells, and links open on click.
+- Bold, links, `[[link\|alias]]`, tags and math render inside cells, and links open on click (Ctrl/Cmd-click for a new tab). Screenshots and copied images paste straight into a cell and are saved as attachments; images in cells are at most 320 px wide.
 
 ## Settings
 
