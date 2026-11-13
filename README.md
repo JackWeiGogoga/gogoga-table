@@ -58,6 +58,7 @@ It works as soon as it's on: Markdown tables in Live Preview and Reading view be
 - **Style**: Default (Notion-like: square corners, faint lines, a light header), Zebra, Minimal.
 - **Row spacing**: Comfortable, Compact.
 - **Tables fill the page width** (off by default): tables whose column widths you haven't set stretch to the page width; display only.
+- **Table style over theme** (on by default): themes like OnePage, Minimal, Blue Topaz, Border and phycat restyle table borders, header backgrounds and text colors with !important; on, tables keep this plugin's look, off, the theme's table style wins.
 - **Scale column widths to fit** (on by default): when a table with set column widths is wider than the page (say, with a sidebar open), its columns shrink proportionally to fit and grow back when there's room; display only, your notes keep the original widths.
 - **Read-only tables in Reading view** (on by default): tables are view-only in Reading view, like the rest of it; turn off to edit tables there too.
 - **Crosshair highlight**, **Show formatting while editing a cell**, **Format bar when selecting text in a cell**: see their descriptions in the settings tab.
