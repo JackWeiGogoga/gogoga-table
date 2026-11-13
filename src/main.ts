@@ -142,6 +142,32 @@ class TableSettingTab extends PluginSettingTab {
           }),
       );
     new Setting(containerEl)
+      .setName(zh ? "表格默认撑满页面宽度" : "Tables fill the page width")
+      .setDesc(
+        zh
+          ? "没拖过列宽的表格铺满正文宽度，各列按内容多少分；拖过列宽的表格还按设的宽度。只改显示，不往笔记里写东西。单张表也可以用表格左上角菜单里的「撑满页面宽度」。"
+          : "Tables whose column widths you haven't set stretch to the page width, with columns sized by their content; tables with set widths keep them. Display only — nothing is written to your notes. For a single table you can also use Fit to page width in its table menu.",
+      )
+      .addToggle((tg) =>
+        tg.setValue(s.fullWidth).onChange(async (v) => {
+          s.fullWidth = v;
+          await this.plugin.saveSettings();
+        }),
+      );
+    new Setting(containerEl)
+      .setName(zh ? "阅读视图里表格只读" : "Read-only tables in Reading view")
+      .setDesc(
+        zh
+          ? "和 Obsidian 的阅读视图一致：表格只看不改，点格子不会进入编辑，没有手柄和加号，链接照常能点。关掉后在阅读视图里也能直接改表格。"
+          : "Like the rest of Reading view: tables are view-only, clicking a cell doesn't start editing, and there are no handles or add buttons; links still work. Turn off to edit tables directly in Reading view.",
+      )
+      .addToggle((tg) =>
+        tg.setValue(s.readingReadonly).onChange(async (v) => {
+          s.readingReadonly = v;
+          await this.plugin.saveSettings();
+        }),
+      );
+    new Setting(containerEl)
       .setName(zh ? "十字高亮" : "Crosshair highlight")
       .setDesc(zh ? "选中格子时，把它所在的整行和整列铺一层淡色，看大表格不容易串行。「悬停时」跟着鼠标走，鼠标离开表格后回到选中的格子。" : "Tint the whole row and column of the selected cell so large tables are easier to follow. On hover follows the mouse, falling back to the selected cell when the mouse leaves the table.")
       .addDropdown((dd) =>

@@ -4,6 +4,13 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Added
+- Setting **Read-only tables in Reading view** (on by default): like the rest of Reading view, tables are view-only — clicking a cell doesn't start editing, there are no handles or add buttons, and links still work. Tables used to be editable in Reading view; turn this off to get that back.
+- Setting **Tables fill the page width** (off by default): tables whose column widths you haven't set stretch to the page width, with columns sized by their content; tables with set widths keep them. Display only — nothing is written to your notes.
+
+### Fixed
+- On Windows (or macOS with scroll bars always shown), the horizontal scroll bar of a wide table sat under the add-row button and couldn't be dragged or clicked. The button now sits below the scroll bar.
+
 ## [0.9.1] - 2026-11-12
 
 ### Added

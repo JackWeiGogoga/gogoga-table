@@ -246,6 +246,8 @@ export function readingProcessor(app: App, factory: TableHostFactory) {
       child.extra = (holder as HTMLElement & { ggtSplit?: HTMLElement[] }).ggtSplit ?? [];
       ctx.addChild(child);
       const editor = new TableEditor(holder, table, factory.host(ctx.sourcePath, child, {
+        // 设置「阅读视图里表格只读」（默认开）：和 Obsidian 的阅读视图一致，点格子不进编辑、没有手柄和加号
+        readonly: factory.readingReadonly(),
         onChange: (next, prev) => {
           const file = app.vault.getAbstractFileByPath(ctx.sourcePath);
           if (!(file instanceof TFile)) return;

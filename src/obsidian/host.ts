@@ -15,6 +15,10 @@ export interface TableSettings {
   formatBar: boolean;
   /** 编辑格子时直接显示格式（加粗、颜色、荧光笔），标签藏起来；默认关 */
   richEdit: boolean;
+  /** 阅读视图里表格只读（默认开）：关掉才能在阅读视图里直接改表格 */
+  readingReadonly: boolean;
+  /** 没设过列宽的表格撑满页面宽度（默认关）：只改显示，不往文件里写列宽 */
+  fullWidth: boolean;
 }
 
 /** 格式栏的颜色：和 gogoga Mind Map 的默认「常用文字颜色 / 荧光笔颜色」一样 */
@@ -28,10 +32,14 @@ export const DEFAULT_SETTINGS: TableSettings = {
   crosshair: "off",
   formatBar: false,
   richEdit: false,
+  readingReadonly: true,
+  fullWidth: false,
 };
 
 export interface TableHostFactory {
   enabled(): boolean;
+  /** 阅读视图里的表格是不是只读 */
+  readingReadonly(): boolean;
   /** owner：格子里渲染出来的 Markdown 挂在它下面，编辑器拆掉时一起卸载 */
   host(sourcePath: string, owner: Component, own: Pick<EditorHost, "onChange"> & Partial<EditorHost>): EditorHost;
   /** 把样式预设、行距放到编辑器根元素上 */
@@ -49,6 +57,7 @@ function stamp(d = new Date()): string {
 export function makeFactory(app: App, settings: () => TableSettings): TableHostFactory {
   return {
     enabled: () => settings().enabled,
+    readingReadonly: () => settings().readingReadonly,
     host: (sourcePath, owner, own) => {
       // 悬停预览挂在这里（Obsidian 把弹出的预览记在 hoverPopover 上）
       const hoverParent: HoverParent = { hoverPopover: null };
@@ -122,6 +131,7 @@ export function makeFactory(app: App, settings: () => TableSettings): TableHostF
       root.dataset.defPreset = settings().preset;
       root.dataset.defDensity = settings().density;
       root.dataset.cross = settings().crosshair;
+      root.dataset.defFull = settings().fullWidth ? "1" : "";
       root.dispatchEvent(new Event("ggt-restyle"));
     },
   };
