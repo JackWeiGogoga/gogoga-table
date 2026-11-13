@@ -5,8 +5,13 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ## [Unreleased]
 
 ### Added
+- Setting **Table style over theme** (on by default, #12): themes such as OnePage, Minimal, Blue Topaz, Border and phycat restyle table borders, header backgrounds, text colors and corners with !important, overriding this plugin. On, tables keep this plugin's look in all four styles, and cell colors still apply; off, the theme's table style wins.
 - On phones and tablets, editing a cell shows the table's own toolbar above the keyboard: Done, Undo, Redo, Bold, Italic, Strikethrough, Highlight, Insert link, Checkbox, New line in cell, Previous cell and Next cell. With nothing selected, a format button inserts a pair of markers with the cursor between them, so what you type next gets that format. (Obsidian's own mobile toolbar hides while a cell is being edited, and its buttons only act on the note text.)
 - Column widths can be changed on touch screens: tap a cell and a round handle appears on that column's right edge; drag it to resize, double-tap it to go back to automatic width.
+
+### Fixed
+- Empty lines in a cell (Shift+Enter) disappeared once you left the cell (#13). They now take up a line; the file is unchanged.
+- With themes whose page background is translucent (phycat with a wallpaper, for example), the table menu, suggestions, format bar and color palette were see-through and hard to read. They now use Obsidian's menu background, like Obsidian's own menus.
 
 ## [0.11.0] - 2026-11-13
 

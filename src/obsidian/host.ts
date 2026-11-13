@@ -23,6 +23,8 @@ export interface TableSettings {
   fullWidth: boolean;
   /** 设过列宽的表格比正文宽时，各列按比例缩到正好放下（默认开）：只改显示，文件里还是原来的列宽 */
   fitCols: boolean;
+  /** 表格样式优先于主题（默认开）：主题给 table / th / td 写了 !important 的边框、底色、文字颜色也压过去 */
+  strictStyle: boolean;
   /** 格式栏颜色下拉记住的颜色：上次用的、最近使用（按文字颜色 text / 荧光笔 bg 分开） */
   colorMemory?: { last?: Record<string, string>; recent?: Record<string, string[]> };
 }
@@ -41,6 +43,7 @@ export const DEFAULT_SETTINGS: TableSettings = {
   readingReadonly: true,
   fullWidth: false,
   fitCols: true,
+  strictStyle: true,
 };
 
 export interface TableHostFactory {
@@ -212,6 +215,7 @@ export function makeFactory(app: App, settings: () => TableSettings, persist: ()
       root.dataset.cross = settings().crosshair;
       root.dataset.defFull = settings().fullWidth ? "1" : "";
       root.dataset.defFit = settings().fitCols ? "1" : "";
+      root.dataset.defStrict = settings().strictStyle ? "1" : "";
       root.dispatchEvent(new Event("ggt-restyle"));
     },
   };

@@ -164,6 +164,19 @@ class TableSettingTab extends PluginSettingTab {
         }),
       );
     new Setting(containerEl)
+      .setName(zh ? "表格样式优先于主题" : "Table style over theme")
+      .setDesc(
+        zh
+          ? "有的主题（OnePage、Minimal、Blue Topaz、Border、phycat 等）会用 !important 改表格的边框、表头底色和文字颜色，把表格插件的样式盖掉。打开后表格按插件自己的样式画（边框、表头、极简线和三线表这些样式），关掉就让主题的表格样式生效。"
+          : "Some themes (OnePage, Minimal, Blue Topaz, Border, phycat and others) restyle table borders, header backgrounds and text colors with !important, overriding this plugin. On: tables keep this plugin's look (borders, header, the Minimal and Three-line styles). Off: the theme's table style wins.",
+      )
+      .addToggle((tg) =>
+        tg.setValue(s.strictStyle).onChange(async (v) => {
+          s.strictStyle = v;
+          await this.plugin.saveSettings();
+        }),
+      );
+    new Setting(containerEl)
       .setName(zh ? "列宽按比例缩放" : "Scale column widths to fit")
       .setDesc(
         zh
