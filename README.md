@@ -50,13 +50,16 @@ It works as soon as it's on: Markdown tables in Live Preview and Reading view be
 - **Commands**: Insert table (pick the size on a grid; in the command palette choose **gogoga Table: Insert table** — the plain **Insert table** without the plugin name is Obsidian's own and has no size picker), Convert selected text (CSV or tab-separated) to table, and row/column insert, duplicate, delete, sort, merge, align and more, all in the command palette and bindable to hotkeys.
 - **Long and wide tables**: the header sticks to the top as you scroll down, and a soft shadow on either side shows when a wide table can scroll sideways.
 - **Mobile**: tap a cell to edit, long-press for the menu, swipe to scroll as usual; after tapping a cell its row and column handles appear, and you can drag them with a finger.
-- Bold, links, `[[link\|alias]]`, tags and math render inside cells, and links open on click (Ctrl/Cmd-click for a new tab). Screenshots and copied images paste straight into a cell and are saved as attachments; images in cells are at most 320 px wide.
+- Bold, links, `[[link\|alias]]`, tags and math render inside cells, and links open on click (Ctrl/Cmd-click for a new tab). Screenshots and copied images paste straight into a cell and are saved as attachments; images in cells are at most 320 px wide; double-click one to view it enlarged. Right-click an image in a cell for Copy image, open, rename, move, Delete image and more; right-click a link for the same link menu as in notes. Type `[[` (or 【【 with a Chinese input method) for link suggestions.
 
 ## Settings
 
 - **Enhance Markdown tables** (on by default): turn off to go back to Obsidian's own tables.
 - **Style**: Default (Notion-like: square corners, faint lines, a light header), Zebra, Minimal.
 - **Row spacing**: Comfortable, Compact.
+- **Tables fill the page width** (off by default): tables whose column widths you haven't set stretch to the page width; display only.
+- **Read-only tables in Reading view** (on by default): tables are view-only in Reading view, like the rest of it; turn off to edit tables there too.
+- **Crosshair highlight**, **Show formatting while editing a cell**, **Format bar when selecting text in a cell**: see their descriptions in the settings tab.
 
 ## What's stored in your notes
 
