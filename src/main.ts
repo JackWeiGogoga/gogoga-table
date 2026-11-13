@@ -19,7 +19,14 @@ export default class TablePlugin extends Plugin {
   async onload(): Promise<void> {
     setLanguage(typeof getLanguage === "function" ? getLanguage() : window.localStorage.getItem("language"));
     this.settings = { ...DEFAULT_SETTINGS, ...((await this.loadData()) as Partial<TableSettings> | null) };
-    const factory = makeFactory(this.app, () => this.settings);
+    const factory = makeFactory(this.app, () => this.settings, () => {
+      // 连着挑颜色时攒一下再写
+      if (this.persistTimer !== null) window.clearTimeout(this.persistTimer);
+      this.persistTimer = window.setTimeout(() => {
+        this.persistTimer = null;
+        void this.saveData(this.settings);
+      }, 1000);
+    });
     this.factory = factory;
     this.livePreview = livePreviewTables(factory);
     if (this.settings.enabled) this.extensions.push(this.livePreview);
@@ -77,6 +84,8 @@ export default class TablePlugin extends Plugin {
     // 关掉插件：阅读视图换回原生表格
     window.setTimeout(() => this.refresh(), 0);
   }
+
+  private persistTimer: number | null = null;
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);

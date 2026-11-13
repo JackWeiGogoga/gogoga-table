@@ -1,5 +1,6 @@
 /** 实时预览、阅读视图共用：用 Obsidian 的能力（Markdown 渲染、图标、设置）拼出编辑器的宿主 */
 
+import { type ColorMemory, pushRecent } from "../core/color-palette";
 import { type App, type Component, type HoverParent, Keymap, MarkdownRenderer, Menu, Notice, setIcon } from "obsidian";
 import type { EditorHost, TableEditor } from "../editor/editor";
 import { t } from "../editor/i18n";
@@ -22,6 +23,8 @@ export interface TableSettings {
   fullWidth: boolean;
   /** 设过列宽的表格比正文宽时，各列按比例缩到正好放下（默认开）：只改显示，文件里还是原来的列宽 */
   fitCols: boolean;
+  /** 格式栏颜色下拉记住的颜色：上次用的、最近使用（按文字颜色 text / 荧光笔 bg 分开） */
+  colorMemory?: { last?: Record<string, string>; recent?: Record<string, string[]> };
 }
 
 /** 格式栏的颜色：和 gogoga Mind Map 的默认「常用文字颜色 / 荧光笔颜色」一样 */
@@ -87,7 +90,18 @@ function stamp(d = new Date()): string {
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 }
 
-export function makeFactory(app: App, settings: () => TableSettings): TableHostFactory {
+export function makeFactory(app: App, settings: () => TableSettings, persist: () => void = () => {}): TableHostFactory {
+  // 格式栏颜色下拉记住的颜色，所有表格共用一份，存在设置里（只写 data.json，不重画表格）
+  const colorMemory: ColorMemory = {
+    last: (k) => settings().colorMemory?.last?.[k] ?? null,
+    recent: (k) => settings().colorMemory?.recent?.[k] ?? [],
+    remember: (k, c) => {
+      const m = (settings().colorMemory ??= {});
+      m.last = { ...(m.last ?? {}), [k]: c };
+      m.recent = { ...(m.recent ?? {}), [k]: pushRecent(m.recent?.[k] ?? [], c) };
+      persist();
+    },
+  };
   return {
     enabled: () => settings().enabled,
     readingReadonly: () => settings().readingReadonly,
@@ -161,6 +175,7 @@ export function makeFactory(app: App, settings: () => TableSettings): TableHostF
         },
         richEdit: () => settings().richEdit,
         formatColors: () => (settings().formatBar ? { text: FORMAT_TEXT_COLORS, highlight: FORMAT_HIGHLIGHT_COLORS } : null),
+        colorMemory: () => colorMemory,
         // [[ 补全：笔记按名字找（名字开头的排前面），插的是 Obsidian 生成的最短链接
         suggestLinks: (query) => {
           const q = query.toLowerCase();

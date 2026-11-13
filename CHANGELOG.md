@@ -8,8 +8,12 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 - Setting **Scale column widths to fit** (on by default): when a table with set column widths is wider than the page (say, after opening a sidebar or the file list), its columns shrink in proportion to fit instead of scrolling sideways, and grow back when there's room. Display only — your notes keep the original widths; tables with too many columns still scroll. Dragging a column border while scaled stores the width scaled back up (#10).
 - Vertical alignment: right-click a cell or open the column menu for **Align top / Center vertically / Align bottom**, per column; the table menu can set it for the whole table. Stored in the comment below the table (`va`); top is the default and isn't written. Kept when copying to Word or Feishu.
 
+### Changed
+- The format bar's text color and highlighter (setting **Format bar when selecting text in a cell**) are now split buttons like gogoga Mind Map's: click the left half to reuse the last color, or ▾ for a palette with frequent colors, a 60-color grid, recent colors, opacity and a custom picker, so any color works. The last and recent colors are kept in settings and shared by all tables. The separate Highlight button moved into the highlighter palette (Highlight (==text==)).
+
 ### Fixed
 - Some themes force a background on table headers and cells (Blue Topaz, Border and others, sometimes with !important), hiding the background and text colors you set on cells so they looked unapplied. Cell colors now win over the theme, and colored cells in a sticky header or frozen column stay opaque.
+- In the format bar, No highlighter didn't remove a plain ==highlight== (only colored ones), and picking a highlighter color on ==highlighted== text stacked two highlights. Both now replace it.
 - Inline code in cells had no background or monospace font in Live Preview, unlike inline code elsewhere in the note (Reading view was fine). It now matches.
 
 ## [0.10.0] - 2026-11-13
