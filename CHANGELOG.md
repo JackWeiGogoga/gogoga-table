@@ -4,6 +4,9 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Fixed
+- Inline code in cells had no background or monospace font in Live Preview, unlike inline code elsewhere in the note (Reading view was fine). It now matches.
+
 ## [0.10.0] - 2026-11-13
 
 ### Added
