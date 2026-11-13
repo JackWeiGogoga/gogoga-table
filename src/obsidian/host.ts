@@ -1,7 +1,8 @@
 /** 实时预览、阅读视图共用：用 Obsidian 的能力（Markdown 渲染、图标、设置）拼出编辑器的宿主 */
 
-import { type App, type Component, type HoverParent, Keymap, MarkdownRenderer, Notice, setIcon } from "obsidian";
+import { type App, type Component, type HoverParent, Keymap, MarkdownRenderer, Menu, Notice, setIcon } from "obsidian";
 import type { EditorHost, TableEditor } from "../editor/editor";
+import { t } from "../editor/i18n";
 import { guardEditorHotkeys } from "./keys";
 
 export interface TableSettings {
@@ -48,6 +49,35 @@ export interface TableHostFactory {
   attach(editor: TableEditor): () => void;
 }
 
+/** Obsidian 自己给链接右键用的菜单（内部方法，没有就不加；有它菜单才和笔记里一模一样） */
+function linkContextMenu(app: App, menu: Menu, linktext: string, sourcePath: string): void {
+  const ws = app.workspace as unknown as { handleLinkContextMenu?: (menu: Menu, linktext: string, sourcePath: string) => boolean };
+  ws.handleLinkContextMenu?.(menu, linktext, sourcePath);
+}
+
+/** 把格子里显示的图片复制到剪贴板（转成 PNG，剪贴板只认这个） */
+async function copyImage(img: HTMLImageElement): Promise<boolean> {
+  try {
+    const doc = img.ownerDocument;
+    const win = doc.defaultView ?? window;
+    const blob = await (await fetch(img.currentSrc || img.src)).blob();
+    let png = blob;
+    if (blob.type !== "image/png") {
+      const bmp = await win.createImageBitmap(blob);
+      const canvas = doc.createElement("canvas");
+      canvas.width = bmp.width;
+      canvas.height = bmp.height;
+      canvas.getContext("2d")?.drawImage(bmp, 0, 0);
+      png = await new Promise<Blob>((ok, fail) => canvas.toBlob((b) => (b ? ok(b) : fail(new Error("toBlob"))), "image/png"));
+    }
+    await win.navigator.clipboard.write([new win.ClipboardItem({ "image/png": png })]);
+    return true;
+  } catch (e) {
+    new Notice((e as Error).message);
+    return false;
+  }
+}
+
 /** 本地时间的 YYYYMMDDHHmmss（和 Obsidian 粘贴图片的文件名一样） */
 function stamp(d = new Date()): string {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -81,6 +111,37 @@ export function makeFactory(app: App, settings: () => TableSettings): TableHostF
             linktext,
             sourcePath,
           });
+        },
+        // 右键格子里的双链：和笔记里一样的原生菜单（新标签页打开、重命名、移动、在访达中显示……，别的插件加的项也在）
+        linkMenu: (ev, href) => {
+          const menu = new Menu();
+          linkContextMenu(app, menu, href, sourcePath);
+          menu.showAtMouseEvent(ev);
+        },
+        // 右键格子里的图片：复制图片 + 原生的文件菜单 + 删除图片（删文件前用 Obsidian 自己的确认框，删了再把格子里的嵌入去掉）
+        imageMenu: (ev, img, link, remove) => {
+          const menu = new Menu();
+          menu.addItem((item) =>
+            item
+              .setSection("action")
+              .setTitle(t("copyImage"))
+              .setIcon("copy")
+              .onClick(() => void copyImage(img).then((ok) => ok && new Notice(t("copiedImage")))),
+          );
+          const file = link ? app.metadataCache.getFirstLinkpathDest(link, sourcePath) : null;
+          if (link && file) linkContextMenu(app, menu, link, sourcePath);
+          if (file && remove)
+            menu.addItem((item) =>
+              item
+                .setSection("danger")
+                .setTitle(t("deleteImage"))
+                .setIcon("trash-2")
+                .setWarning(true)
+                .onClick(async () => {
+                  if (await app.fileManager.promptForDeletion(file)) remove();
+                }),
+            );
+          menu.showAtMouseEvent(ev);
         },
         // 粘贴的图片按 Obsidian 的附件设置存，名字和 Obsidian 自己粘贴的一样
         saveImage: async (file) => {

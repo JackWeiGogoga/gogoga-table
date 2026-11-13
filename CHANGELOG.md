@@ -7,6 +7,9 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - Setting **Read-only tables in Reading view** (on by default): like the rest of Reading view, tables are view-only — clicking a cell doesn't start editing, there are no handles or add buttons, and links still work. Tables used to be editable in Reading view; turn this off to get that back.
 - Typing 【【 with a Chinese input method in a cell now opens link suggestions too: 【【 becomes [[ and 】】 closes it as ]], so you don't have to switch input methods (same as gogoga Mind Map).
+- Double-click an image in a cell to view it enlarged (click or Esc to close; in Reading view a single click opens Obsidian's own image viewer) (#9).
+- Right-click an image in a cell: Copy image, open in a new tab, rename, move, open in default app, reveal in Finder, and **Delete image** (Obsidian's delete confirmation first; after the file is deleted the image is removed from the cell too, and Mod+Z brings the cell text back). Read-only tables don't offer Delete image (#9).
+- Right-click a link in a cell for the same native link menu as in notes (#9).
 - Setting **Tables fill the page width** (off by default): tables whose column widths you haven't set stretch to the page width, with columns sized by their content; tables with set widths keep them. Display only — nothing is written to your notes.
 
 ### Fixed
