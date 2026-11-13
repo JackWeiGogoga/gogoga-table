@@ -20,6 +20,8 @@ export interface TableSettings {
   readingReadonly: boolean;
   /** 没设过列宽的表格撑满页面宽度（默认关）：只改显示，不往文件里写列宽 */
   fullWidth: boolean;
+  /** 设过列宽的表格比正文宽时，各列按比例缩到正好放下（默认开）：只改显示，文件里还是原来的列宽 */
+  fitCols: boolean;
 }
 
 /** 格式栏的颜色：和 gogoga Mind Map 的默认「常用文字颜色 / 荧光笔颜色」一样 */
@@ -35,6 +37,7 @@ export const DEFAULT_SETTINGS: TableSettings = {
   richEdit: false,
   readingReadonly: true,
   fullWidth: false,
+  fitCols: true,
 };
 
 export interface TableHostFactory {
@@ -193,6 +196,7 @@ export function makeFactory(app: App, settings: () => TableSettings): TableHostF
       root.dataset.defDensity = settings().density;
       root.dataset.cross = settings().crosshair;
       root.dataset.defFull = settings().fullWidth ? "1" : "";
+      root.dataset.defFit = settings().fitCols ? "1" : "";
       root.dispatchEvent(new Event("ggt-restyle"));
     },
   };

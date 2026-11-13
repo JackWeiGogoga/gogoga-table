@@ -34,12 +34,12 @@ It works as soon as it's on: Markdown tables in Live Preview and Reading view be
 - **Paste to create a table**: paste a table copied from Excel, WPS, Numbers, Feishu, Google Sheets or a web page into your note and it becomes a table, with the first row as the header and blank lines added around it. This only happens when the clipboard holds just a table (at least 2 rows and 2 columns); inside code blocks, math and frontmatter it pastes as plain text.
 - **Merge cells**: select a range and right-click → **Merge cells**; the merged cell shows all their text and nothing is lost; unmerging gives each cell its own text back. Right-click a merged cell → **Unmerge cells**. Inserting rows or columns inside a merged area grows it, deleting shrinks it.
 - **Add rows and columns**: hover the table and use the plus buttons on the right and bottom edges.
-- **Row and column handles**: hover a cell to show handles on its row's left edge and its column's top edge. Drag a handle to reorder rows or columns (backgrounds, widths and merges move along); click it for the row / column menu: insert, move, color the whole row or column, delete; the column menu also has alignment and auto width.
-- **Right-click a cell**: insert rows and columns, alignment, background, clear, delete.
+- **Row and column handles**: hover a cell to show handles on its row's left edge and its column's top edge. Drag a handle to reorder rows or columns (backgrounds, widths and merges move along); click it for the row / column menu: insert, move, color the whole row or column, delete; the column menu also has alignment (horizontal and vertical) and auto width.
+- **Right-click a cell**: insert rows and columns, alignment (left / center / right, plus top / middle / bottom, per column), background, clear, delete.
 - **Column width**: drag the right edge of a header cell; double-click it to go back to auto.
 - **Backgrounds**: gray, red, orange, yellow, green, blue and purple, taken from your theme's colors and softened, so they work in light and dark mode.
 - **Fill handle**: drag the small square at the bottom-right of a selection to continue a series down or right: numbers count up, numbered text (Item 1), dates, weekdays and months continue, anything else is copied; hold ⌥ to always copy. Dragging past the edge adds rows or columns.
-- **Table menu** (top-left corner): style for this table (Default, Zebra, Minimal, Three-line) and row spacing, first column as header, align the whole table, distribute columns evenly, fit to page width, auto width for all columns, clear all colors; Copy table (pastes back into another note with its look) and Copy as Markdown table (plain GFM, without colors or other settings).
+- **Table menu** (top-left corner): style for this table (Default, Zebra, Minimal, Three-line) and row spacing, first column as header, align the whole table horizontally or vertically, distribute columns evenly, fit to page width, auto width for all columns, clear all colors; Copy table (pastes back into another note with its look) and Copy as Markdown table (plain GFM, without colors or other settings).
 - **Sort**: from the column menu, A→Z or Z→A; numbers by value, dates by time, Chinese by pinyin, empty cells last; a total row stays put.
 - **Duplicate and insert many**: Duplicate row / column in the row and column menus; select several rows (or columns) and insert to add that many at once.
 - **Checkboxes**: `[ ]` or `[x]` in a cell becomes a clickable checkbox; Space toggles a selected one; right-click → Turn into checkbox.
@@ -58,6 +58,7 @@ It works as soon as it's on: Markdown tables in Live Preview and Reading view be
 - **Style**: Default (Notion-like: square corners, faint lines, a light header), Zebra, Minimal.
 - **Row spacing**: Comfortable, Compact.
 - **Tables fill the page width** (off by default): tables whose column widths you haven't set stretch to the page width; display only.
+- **Scale column widths to fit** (on by default): when a table with set column widths is wider than the page (say, with a sidebar open), its columns shrink proportionally to fit and grow back when there's room; display only, your notes keep the original widths.
 - **Read-only tables in Reading view** (on by default): tables are view-only in Reading view, like the rest of it; turn off to edit tables there too.
 - **Crosshair highlight**, **Show formatting while editing a cell**, **Format bar when selecting text in a cell**: see their descriptions in the settings tab.
 
@@ -69,7 +70,7 @@ The table is a standard GFM table, with alignment in the standard `:---:` form. 
 | Plan | Price | Storage |
 | :--- | :---: | ---: |
 | Basic | $1 | 5 GB |
-<!-- gogoga-table: {"w":[120,null,200],"bg":{"B2":"yellow"},"merge":["A3:B3"]} -->
+<!-- gogoga-table: {"w":[120,null,200],"va":[null,"middle"],"bg":{"B2":"yellow"},"merge":["A3:B3"]} -->
 ```
 
 - Elsewhere, merged cells show as ordinary cells: the top-left one has the text and the rest are empty, so nothing is lost.

@@ -155,6 +155,19 @@ class TableSettingTab extends PluginSettingTab {
         }),
       );
     new Setting(containerEl)
+      .setName(zh ? "列宽按比例缩放" : "Scale column widths to fit")
+      .setDesc(
+        zh
+          ? "拖过列宽的表格比正文宽时（比如打开了侧栏），各列按比例缩小到正好放下，不出横向滚动条；正文变宽后恢复原来的宽度。只改显示，笔记里还是原来的列宽。列太多、缩到很窄时照样横向滚动。"
+          : "When a table with set column widths is wider than the page (say, with a sidebar open), its columns shrink proportionally to fit instead of scrolling sideways, and grow back when there's room. Display only — your notes keep the original widths. Tables with too many columns still scroll.",
+      )
+      .addToggle((tg) =>
+        tg.setValue(s.fitCols).onChange(async (v) => {
+          s.fitCols = v;
+          await this.plugin.saveSettings();
+        }),
+      );
+    new Setting(containerEl)
       .setName(zh ? "阅读视图里表格只读" : "Read-only tables in Reading view")
       .setDesc(
         zh
