@@ -4,6 +4,10 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Added
+- On phones and tablets, editing a cell shows the table's own toolbar above the keyboard: Done, Undo, Redo, Bold, Italic, Strikethrough, Highlight, Insert link, Checkbox, New line in cell, Previous cell and Next cell. With nothing selected, a format button inserts a pair of markers with the cursor between them, so what you type next gets that format. (Obsidian's own mobile toolbar hides while a cell is being edited, and its buttons only act on the note text.)
+- Column widths can be changed on touch screens: tap a cell and a round handle appears on that column's right edge; drag it to resize, double-tap it to go back to automatic width.
+
 ## [0.11.0] - 2026-11-13
 
 ### Added
