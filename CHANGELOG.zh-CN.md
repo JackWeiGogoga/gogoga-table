@@ -4,6 +4,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-14
+
 ### 新增
 - 设置「表格样式优先于主题」（默认开，#12）：OnePage、Minimal、Blue Topaz、Border、phycat 这些主题会用 !important 改表格的边框、表头底色、文字颜色和圆角，把表格插件的样式盖掉。打开时表格按插件自己的样式画（四种样式都是），格子设的颜色照常生效；关掉就让主题的表格样式生效。
 - 手机、平板上编辑格子时，键盘上方有一排表格自己的工具条：完成、撤销、重做、加粗、斜体、删除线、高亮、插入双链、勾选框、格内换行、上一格、下一格。没选字时点加粗这类按钮，插一对标记、光标放在中间，接着打的字就是这个格式。（Obsidian 自己的手机工具条在编辑格子时会收起来，它的按钮也只管笔记正文。）
@@ -167,7 +169,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 ### 新增
 - 第一个版本：实时预览和阅读视图里的 Markdown 表格换成 Notion 风格的表格。点格子编辑，Enter / Tab 跳格，加行加列，行列手柄和右键菜单，拖列宽，七种底色，三套样式和两档行距；手机上点一下编辑、长按出菜单。选一片格子一起设底色、对齐、清空；和 Excel、飞书、网页互相复制粘贴；合并单元格；拖动行列手柄调整顺序；长表格表头吸顶，宽表格左右有滚动提示。下拉填充；表格左上角菜单（单表样式、三线表、标题列、整表对齐、平均分布列宽、撑满页面）；按列排序；复制行列、一次插入多行；勾选框；文字颜色；合计行；状态列；编辑格子时的格式快捷键和 [[ 链接、# 标签补全；插入表格、文字转表格等命令。复制带样式的 HTML。兼容 Advanced Tables 的公式注释和块标识。文件仍是标准 Markdown 表格，列宽、颜色、合并等存在表格下面的一行注释里。
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.11.0...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.12.0...HEAD
+[0.12.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.11.0...0.12.0
 [0.11.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.10.0...0.11.0
 [0.10.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.9.1...0.10.0
 [0.9.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.9.0...0.9.1
