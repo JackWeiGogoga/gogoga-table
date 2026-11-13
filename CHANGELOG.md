@@ -6,6 +6,7 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ### Added
 - Setting **Read-only tables in Reading view** (on by default): like the rest of Reading view, tables are view-only — clicking a cell doesn't start editing, there are no handles or add buttons, and links still work. Tables used to be editable in Reading view; turn this off to get that back.
+- Typing 【【 with a Chinese input method in a cell now opens link suggestions too: 【【 becomes [[ and 】】 closes it as ]], so you don't have to switch input methods (same as gogoga Mind Map).
 - Setting **Tables fill the page width** (off by default): tables whose column widths you haven't set stretch to the page width, with columns sized by their content; tables with set widths keep them. Display only — nothing is written to your notes.
 
 ### Fixed
