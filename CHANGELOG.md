@@ -4,6 +4,15 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.13.2] - 2026-11-14
+
+### Changed
+- Pressing Esc while editing a cell now saves and leaves the cell, like Obsidian's own tables (#15). It used to cancel the edit and throw away what you had just typed; use ⌘Z / Ctrl+Z to undo.
+
+### Fixed
+- On iPhone and iPad (#15): tables that don't scroll sideways showed only their header, with the body missing. iOS's browser engine stretched the backdrop behind the header over the whole table and covered the body; that backdrop is no longer drawn on iOS (the header cells are opaque themselves).
+- Searching for text inside a table in Live Preview (pressing Enter in Find in file, or clicking a result in global search) jumped there but didn't show which occurrence (#15). The occurrence is now marked in its cell and scrolled into view, and the mark goes away when the search moves outside the table or you click elsewhere.
+
 ## [0.13.1] - 2026-11-14
 
 ### Fixed
@@ -193,7 +202,8 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - First version: Markdown tables in Live Preview and Reading view become Notion-style tables. Click a cell to edit, Enter / Tab to move, add rows and columns, row and column handles plus a right-click menu, drag to resize columns, seven cell backgrounds, three styles and two row spacings; on mobile, tap to edit and long-press for the menu. Select a range to color, align or clear it at once; copy and paste with Excel, Feishu and the web; merge cells; drag row and column handles to reorder; sticky headers on long tables and scroll hints on wide ones. Fill handle; a per-table corner menu (style, three-line style, header column, align all, distribute or fit widths); sort by column; duplicate rows and columns and insert many at once; checkboxes; text colors; total rows; status columns; formatting keys plus [[ link and # tag completion while editing; Insert table and Convert text to table commands. Styled HTML copy. Coexists with Advanced Tables formulas and block ids. Files stay plain Markdown tables, with widths, colors, merges and more in one comment below the table.
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.13.1...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.13.2...HEAD
+[0.13.2]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.13.1...0.13.2
 [0.13.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.13.0...0.13.1
 [0.13.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.12.2...0.13.0
 [0.12.2]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.12.1...0.12.2

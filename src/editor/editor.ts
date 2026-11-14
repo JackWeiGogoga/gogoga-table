@@ -406,6 +406,31 @@ export class TableEditor {
     return false;
   }
 
+  /**
+   * 搜索跳到表格里（在文件中查找、全局搜索点进来）：第 r 行第 c 列格子里第 k 处 text 标出来、滚进视野（#15）。
+   * 用浏览器的自定义高亮，不改格子的 DOM；不支持或者找不到这段字（格式把字拆开了）就让整格闪一下
+   */
+  showMatch(r: number, c: number, text: string, k: number): void {
+    const el = this.grid[r]?.[c];
+    if (!el) return;
+    clearSearchMark();
+    el.scrollIntoView({ block: "center", inline: "nearest" });
+    const content = el.querySelector(".ggt-content");
+    const win = this.root.ownerDocument.defaultView ?? window;
+    const reg = (win.CSS as { highlights?: Map<string, unknown> } | undefined)?.highlights;
+    const H = (win as unknown as { Highlight?: new (...r: Range[]) => unknown }).Highlight;
+    const range = content && text ? findTextRange(content, text, k) : null;
+    // 点一下页面（点格子不经过编辑器，编辑器看不到选区变化）就去掉
+    this.root.ownerDocument.addEventListener("pointerdown", clearSearchMark, { once: true, capture: true });
+    if (range && reg && H) {
+      reg.set("ggt-search", new H(range));
+      searchMarkReg = reg;
+      return;
+    }
+    el.classList.add("is-search-hit");
+    searchMarkCell = el;
+  }
+
   destroy(): void {
     this.hideFormatBar();
     this.hideMobileBar();
@@ -1404,9 +1429,10 @@ export class TableEditor {
         this.commit();
         this.move(0, ev.shiftKey ? -1 : 1, true);
       } else if (ev.key === "Escape") {
+        // Esc 保存并退出编辑，和 Obsidian 自己的表格一样（以前是取消、丢掉刚打的字，#15）；想撤销按 ⌘Z
         ev.preventDefault();
         ev.stopPropagation();
-        this.cancel();
+        this.commit();
       }
       ev.stopPropagation();
       return;
@@ -3240,6 +3266,49 @@ export class TableEditor {
     this.popover?.remove();
     this.popover = null;
   }
+}
+
+let searchMarkReg: Map<string, unknown> | null = null;
+let searchMarkCell: HTMLElement | null = null;
+
+/** 去掉搜索跳转时标出的那一处（选区挪走了、换了一处）。按名字从窗口里删：插件重载前留下的也删掉 */
+export function clearSearchMark(): void {
+  searchMarkReg?.delete("ggt-search");
+  (window.CSS as { highlights?: Map<string, unknown> } | undefined)?.highlights?.delete("ggt-search");
+  searchMarkReg = null;
+  searchMarkCell?.classList.remove("is-search-hit");
+  searchMarkCell = null;
+}
+
+/** 元素里第 k 处（从 0 数）text 的范围：文字可能跨好几个文字节点；不够 k 处就用最后一处 */
+function findTextRange(root: Element, text: string, k: number): Range | null {
+  const doc = root.ownerDocument;
+  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes: Text[] = [];
+  let all = "";
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    nodes.push(n as Text);
+    all += (n as Text).data;
+  }
+  const hits: number[] = [];
+  for (let i = all.indexOf(text); i >= 0; i = all.indexOf(text, i + text.length)) hits.push(i);
+  if (!hits.length) return null;
+  const start = hits[Math.min(k, hits.length - 1)];
+  const at = (pos: number): [Text, number] => {
+    let acc = 0;
+    for (const n of nodes) {
+      if (pos <= acc + n.data.length) return [n, pos - acc];
+      acc += n.data.length;
+    }
+    const last = nodes[nodes.length - 1];
+    return [last, last.data.length];
+  };
+  const range = doc.createRange();
+  const [sn, so] = at(start);
+  const [en, eo] = at(start + text.length);
+  range.setStart(sn, so);
+  range.setEnd(en, eo);
+  return range;
 }
 
 /** 一个 HTML 格子里的文字：<br> 和块级元素之间算换行 */

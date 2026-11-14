@@ -5,7 +5,7 @@
  * 只动顶格写的表格（规则见 core/find.ts），其余照旧由 Obsidian 显示。
  */
 
-import { EditorSelection, EditorState, type Extension, Prec, RangeSetBuilder, StateField, type Text, Transaction } from "@codemirror/state";
+import { EditorSelection, EditorState, type Extension, Prec, RangeSetBuilder, StateEffect, StateField, type Text, Transaction } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView, WidgetType } from "@codemirror/view";
 import { redo, undo } from "@codemirror/commands";
 import { Component, editorInfoField, editorLivePreviewField } from "obsidian";
@@ -13,7 +13,7 @@ import { blockTable, findTables, type TableBlock, writeBlock } from "../core/fin
 import { diffText } from "../core/diff";
 import { canIndent, indentTable } from "../core/indent";
 import { parseTable, type Table } from "../core/table";
-import { sameTable, TableEditor } from "../editor/editor";
+import { clearSearchMark, sameTable, TableEditor } from "../editor/editor";
 import type { TableHostFactory } from "./host";
 
 
@@ -100,6 +100,78 @@ class TableWidget extends WidgetType {
   get estimatedHeight(): number {
     return 38 * this.table.cells.length + 40;
   }
+}
+
+/** 搜索、跳转把选区放进了表格（随后被挪出来）：原来选中的是文档里 [from, to]，所在表格从 tableFrom 开始 */
+const revealEffect = StateEffect.define<{ tableFrom: number; from: number; to: number }>();
+
+/**
+ * 文档里 [from, to] 落在表格的哪一格、是这格里第几处这段字（按源码数）。表头是第 0 行，分隔行不算；
+ * 跨了格子、落在分隔行上返回 null
+ */
+function cellOfRange(doc: Text, tableFrom: number, from: number, to: number): { r: number; c: number; text: string; k: number } | null {
+  const first = doc.lineAt(tableFrom).number;
+  const line = doc.lineAt(from);
+  if (to > line.to) return null;
+  const idx = line.number - first;
+  if (idx === 1) return null;
+  const r = idx === 0 ? 0 : idx - 1;
+  const t = line.text;
+  const off = from - line.from;
+  const lead = t.length - t.trimStart().length;
+  let pipes = 0;
+  let cellStart = lead;
+  for (let i = lead; i < off; i++) {
+    if (t[i] === "\\") {
+      i++;
+      continue;
+    }
+    if (t[i] === "|") {
+      pipes++;
+      cellStart = i + 1;
+    }
+  }
+  for (let i = off; i < to - line.from; i++) if (t[i] === "|" && t[i - 1] !== "\\") return null;
+  const c = t.trimStart().startsWith("|") ? pipes - 1 : pipes;
+  if (c < 0) return null;
+  const text = doc.sliceString(from, to);
+  const before = t.slice(cellStart, off);
+  let k = 0;
+  for (let i = before.indexOf(text); i >= 0; i = before.indexOf(text, i + text.length)) k++;
+  return { r, c, text, k };
+}
+
+/** 这个编辑器所在标签页的查找框（在文件中查找）开着没有 */
+function findBarOpen(view: EditorView): boolean {
+  const box = view.dom.closest(".workspace-leaf-content")?.querySelector<HTMLElement>(".document-search-container");
+  return !!box && box.offsetParent !== null;
+}
+
+/**
+ * 搜索标出的那一处要是落在某张表格里，返回它：查找框开着时是当前这一处（obsidian-search-match-highlight 装饰），
+ * 从全局搜索点进来时是闪一下的那一处（is-flashing 装饰）
+ */
+function findBarMatch(view: EditorView, tables: DecorationSet | undefined): { tableFrom: number; from: number; to: number } | null {
+  if (!tables || tables.size === 0) return null;
+  const want = findBarOpen(view) ? ["obsidian-search-match-highlight", "is-flashing"] : ["is-flashing"];
+  const sources = view.state.facet(EditorView.decorations).map((d) => (typeof d === "function" ? d(view) : d));
+  let out: { tableFrom: number; from: number; to: number } | null = null;
+  tables.between(0, view.state.doc.length, (tFrom, tTo, value) => {
+    if (!(value.spec as { widget?: unknown }).widget) return undefined;
+    for (const set of sources) {
+      set.between(tFrom, tTo, (from, to, d) => {
+        const cls = (d.spec as { class?: string }).class ?? "";
+        if (from >= tFrom && to <= tTo && to > from && want.some((w) => cls.split(/\s+/).includes(w))) {
+          out = { tableFrom: tFrom, from, to };
+          return false;
+        }
+        return undefined;
+      });
+      if (out) return false;
+    }
+    return undefined;
+  });
+  return out;
 }
 
 /** 这个编辑器现在在文件里哪几行：按它在文档里的位置找回所在的表格 */
@@ -219,6 +291,18 @@ export function livePreviewTables(factory: TableHostFactory): Extension {
       // 表格（连同注释）在笔记最后、用户点了表格下面：笔记末尾补一个换行，光标放到那里（#5）
       let append = false;
       const pointer = !tr.docChanged && tr.isUserEvent("select.pointer");
+      // 搜索、跳转（没标用户操作）选中了表格里的一段字：挪出去之前记下来，交给表格标出来（#15）
+      let reveal: { tableFrom: number; from: number; to: number } | null = null;
+      const main = tr.state.selection.main;
+      if (!tr.docChanged && !main.empty && !tr.annotation(Transaction.userEvent)) {
+        deco.between(main.from, main.from, (from, to, value) => {
+          if ((value.spec as { widget?: unknown }).widget && main.from >= from && main.to <= to) {
+            reveal = { tableFrom: from, from: main.from, to: main.to };
+            return false;
+          }
+          return undefined;
+        });
+      }
       const ranges = tr.state.selection.ranges.map((r) => {
         let head = r.head;
         let anchor = r.anchor;
@@ -271,7 +355,7 @@ export function livePreviewTables(factory: TableHostFactory): Extension {
       return {
         changes: tr.changes,
         selection: EditorSelection.create(ranges, tr.state.selection.mainIndex),
-        effects: tr.effects,
+        effects: reveal ? [...tr.effects, revealEffect.of(reveal)] : tr.effects,
         scrollIntoView: tr.scrollIntoView,
         annotations: tr.annotation(Transaction.userEvent) ? [Transaction.userEvent.of(tr.annotation(Transaction.userEvent) as string)] : [],
       };
@@ -316,7 +400,46 @@ export function livePreviewTables(factory: TableHostFactory): Extension {
       return tr;
     }),
   );
-  return [field, keepCursorOut, blockReformat];
+  /**
+   * 搜索跳进了表格，在对应那张表里把那一处标出来（#15）：
+   * - 在文件中查找（⌘F）不动选区，只给当前这一处加一个 obsidian-search-match-highlight 装饰：查找框开着时在表格范围里找它；
+   * - 全局搜索点进来是把选区放到那里（随后被挪出表格）：看 revealEffect。
+   * 当前这一处挪到表格外面、选区换到别处，就去掉
+   */
+  let shown = "";
+  clearSearchMark();
+  const revealListener = EditorView.updateListener.of((u) => {
+    let hit: { tableFrom: number; from: number; to: number } | null = null;
+    for (const tr of u.transactions) for (const e of tr.effects) if (e.is(revealEffect)) hit = e.value;
+    if (!hit) hit = findBarMatch(u.view, u.state.field(field, false));
+    if (!hit) {
+      if (shown && (u.selectionSet || u.docChanged || findBarOpen(u.view))) {
+        shown = "";
+        clearSearchMark();
+      }
+      return;
+    }
+    const key = `${hit.from}:${hit.to}`;
+    if (key === shown && !u.docChanged) return;
+    shown = key;
+    const where = cellOfRange(u.state.doc, hit.tableFrom, hit.from, hit.to);
+    if (!where) return;
+    const view = u.view;
+    const at = hit.tableFrom;
+    // 等这次更新画完（表格可能刚滚进视野、才建出来）
+    view.dom.win.requestAnimationFrame(() => {
+      let node: Node | null = null;
+      try {
+        node = view.domAtPos(at + 1).node;
+      } catch {
+        return;
+      }
+      const el = node.instanceOf(HTMLElement) ? node : node.parentElement;
+      const wrap: (HTMLElement & { ggtEditor?: TableEditor }) | null = el?.closest(".ggt-lp") ?? el?.querySelector(".ggt-lp") ?? null;
+      wrap?.ggtEditor?.showMatch(where.r, where.c, where.text, where.k);
+    });
+  });
+  return [field, keepCursorOut, blockReformat, revealListener];
 }
 
 /** 文档里 [from, to] 这几行当成一张表解析（解析不了返回 null） */

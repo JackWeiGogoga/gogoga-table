@@ -488,6 +488,11 @@
 /* 表格位置带小数时（阅读视图常见），格子各自对齐到像素，两行表头之间、表头顶边会留一条一像素的缝透出正文：整个表头底下再垫一层；吸顶时往上多垫一点 */
 .ggt.is-native-stick .ggt-table thead::before, .ggt.is-sd .ggt-table thead::before { content: ""; position: absolute; inset: 0; z-index: -1; background: var(--background-primary); pointer-events: none; }
 .ggt.is-stuck.is-native-stick .ggt-table thead::before, .ggt.is-stuck.is-sd .ggt-table thead::before { top: -2px; }
+/* iPhone、iPad（WebKit）：原生吸顶的 thead 撑不起绝对定位的 ::before，这层底色铺满整张表、把正文全盖住（只看得到表头，#15）。
+   iOS 上不画它（表头格子自己是不透明的）；-webkit-touch-callout 只有 iOS 的 WebKit 认，桌面和安卓不受影响 */
+@supports (-webkit-touch-callout: none) {
+  .ggt.is-native-stick .ggt-table thead::before { display: none; }
+}
 
 /* 冻结标题列：左右滚动时第一列贴在左边。底下要不透明，先铺页面底色，再叠标题列（或格子）的颜色 */
 .ggt { --ggt-frozen-tint: var(--ggt-head-bg); }
@@ -730,3 +735,7 @@
 .export-image-root .ggt-table col[style*="--ggt-pct"] {
   width: var(--ggt-pct) !important;
 }
+
+/* 搜索跳到表格里：标出当前这一处（#15） */
+::highlight(ggt-search) { background-color: var(--text-highlight-bg, rgba(255, 208, 0, 0.4)); color: var(--text-normal); }
+.ggt .ggt-cell.is-search-hit { box-shadow: inset 0 0 0 2px var(--text-accent); }
