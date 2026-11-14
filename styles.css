@@ -677,7 +677,7 @@
 .ggt.is-strict .ggt-table { border: 0 !important; border-collapse: separate !important; border-spacing: 0 !important; background: transparent !important; box-shadow: none !important; }
 .ggt.is-strict .ggt-table thead, .ggt.is-strict .ggt-table tbody, .ggt.is-strict .ggt-table tr { border: 0 !important; background: transparent !important; box-shadow: none !important; }
 .ggt.is-strict .ggt-table, .ggt.is-strict .ggt-table thead, .ggt.is-strict .ggt-table tbody, .ggt.is-strict .ggt-table .ggt-cell { border-radius: 0 !important; }
-.ggt.is-strict .ggt-table .ggt-cell { border-top: 0 !important; border-left: 0 !important; border-right: 1px solid var(--ggt-line) !important; border-bottom: 1px solid var(--ggt-line) !important; text-shadow: none !important; }
+.ggt.is-strict .ggt-table .ggt-cell { padding: 0 !important; border-top: 0 !important; border-left: 0 !important; border-right: 1px solid var(--ggt-line) !important; border-bottom: 1px solid var(--ggt-line) !important; text-shadow: none !important; }
 .ggt.is-strict .ggt-table .ggt-cell[data-c="0"] { border-left: 1px solid var(--ggt-line) !important; }
 .ggt.is-strict .ggt-table thead .ggt-cell { border-top: 1px solid var(--ggt-line) !important; font-weight: var(--font-semibold, 600) !important; }
 .ggt.is-strict .ggt-table .ggt-cell:not([data-fg]) { color: var(--text-normal) !important; }
