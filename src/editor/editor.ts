@@ -259,6 +259,15 @@ export class TableEditor {
     this.colHandle = this.handle("ggt-col-handle", t("colMenu"), "grip-horizontal");
     this.addButton("ggt-add-col", t("addCol"), () => this.apply(insertCol(this.table, colCount(this.table)), { r: this.sel?.r ?? 0, c: colCount(this.table) }));
     this.addButton("ggt-add-row", t("addRow"), () => this.apply(insertRow(this.table, rowCount(this.table)), { r: rowCount(this.table), c: this.sel?.c ?? 0 }));
+    // 群里反馈：四边都能加。左边加在最前面；上边加在表头下面（Markdown 的表头只能是第一行）。
+    // 这两条在表格外面（里面的留白放着行列手柄），盖在上一行文字、左边留白上：鼠标先进了表格才接得住点击，免得点上一行的字误加一行
+    this.addButton("ggt-add-col-first", t("addColFirst"), () => this.apply(insertCol(this.table, 0), { r: this.sel?.r ?? 0, c: 0 }));
+    this.addButton("ggt-add-row-first", t("addRowFirst"), () => {
+      const at = headRows(this.table);
+      this.apply(insertRow(this.table, at), { r: at, c: this.sel?.c ?? 0 });
+    });
+    this.root.addEventListener("pointerenter", () => this.root.classList.add("is-hot"));
+    this.root.addEventListener("pointerleave", () => this.root.classList.remove("is-hot"));
     this.root.classList.toggle("is-readonly", !!host.readonly);
     parent.appendChild(this.root);
     this.bind();
@@ -1480,7 +1489,9 @@ export class TableEditor {
           this.apply(toggleCheck(this.table, this.sel.r, this.sel.c), this.sel);
           return;
         }
-        break;
+        // 选中格子按空格：进入编辑、内容留着、光标在最后（群里反馈：以前和打字一样把整格换成一个空格，内容没了）
+        stop();
+        return this.startEdit(true);
       case "Enter":
       case "F2":
         stop();

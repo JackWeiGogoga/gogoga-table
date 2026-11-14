@@ -229,6 +229,12 @@
 .ggt button.ggt-add:hover { background: rgba(var(--mono-rgb-100), 0.06); color: var(--text-normal); }
 .ggt-add-col { top: 10px; bottom: calc(26px + var(--ggt-sb, 0px)); right: 4px; width: 18px; height: auto; }
 .ggt-add-row { left: 14px; right: 26px; bottom: 4px; height: 18px; width: auto; }
+/* 左边、上边的加号在表格外面：左边让开行手柄，上边让开列手柄；鼠标进了表格（is-hot）才接点击，盖着的上一行文字照常能点 */
+.ggt-add-col-first { top: 10px; bottom: calc(26px + var(--ggt-sb, 0px)); left: -12px; width: 18px; height: auto; }
+.ggt-add-row-first { left: 14px; right: 26px; top: -20px; height: 18px; width: auto; }
+.ggt button.ggt-add-col-first, .ggt button.ggt-add-row-first { pointer-events: none; }
+.ggt.is-hot button.ggt-add-col-first, .ggt.is-hot button.ggt-add-row-first { pointer-events: auto; }
+.is-mobile .ggt button.ggt-add-col-first, .is-mobile .ggt button.ggt-add-row-first, .is-phone .ggt button.ggt-add-col-first, .is-phone .ggt button.ggt-add-row-first { display: none; }
 .ggt.is-readonly .ggt-add, .ggt.is-readonly .ggt-handle { display: none; }
 
 /* 弹出菜单 */
