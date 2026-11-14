@@ -4,6 +4,14 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-14
+
+### 新增
+- 设置「格子左右内边距」（#14）：格子里文字离左右边框多远，可选 4 / 6 / 8 / 10，默认 10 和以前一样；行距选「紧凑」的表格最多 8。
+
+### 修复
+- 白板卡片里的表格，开着「所见即所得编辑」时，编辑中点格子里的字会直接保存退出，光标挪不到想改的地方，只能全删重打。白板编辑卡片时表格是先在主窗口建好再挪进卡片里的，编辑框还以为自己在主窗口；现在跟着它实际所在的地方走。
+
 ## [0.14.0] - 2026-11-14
 
 ### 新增
@@ -215,7 +223,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 ### 新增
 - 第一个版本：实时预览和阅读视图里的 Markdown 表格换成 Notion 风格的表格。点格子编辑，Enter / Tab 跳格，加行加列，行列手柄和右键菜单，拖列宽，七种底色，三套样式和两档行距；手机上点一下编辑、长按出菜单。选一片格子一起设底色、对齐、清空；和 Excel、飞书、网页互相复制粘贴；合并单元格；拖动行列手柄调整顺序；长表格表头吸顶，宽表格左右有滚动提示。下拉填充；表格左上角菜单（单表样式、三线表、标题列、整表对齐、平均分布列宽、撑满页面）；按列排序；复制行列、一次插入多行；勾选框；文字颜色；合计行；状态列；编辑格子时的格式快捷键和 [[ 链接、# 标签补全；插入表格、文字转表格等命令。复制带样式的 HTML。兼容 Advanced Tables 的公式注释和块标识。文件仍是标准 Markdown 表格，列宽、颜色、合并等存在表格下面的一行注释里。
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.14.0...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.15.0...HEAD
+[0.15.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.14.0...0.15.0
 [0.14.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.13.3...0.14.0
 [0.13.3]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.13.2...0.13.3
 [0.13.2]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.13.1...0.13.2

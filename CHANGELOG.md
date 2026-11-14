@@ -4,6 +4,14 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-14
+
+### Added
+- Setting "Cell side padding" (#14): how far text sits from a cell's left and right borders — 4, 6, 8 or 10; the default 10 is unchanged, and Compact tables use at most 8.
+
+### Fixed
+- Tables in Canvas cards with rich cell editing on: clicking inside the cell you were editing saved and left it, so you couldn't move the cursor and had to retype the cell. Canvas builds the card's editor in the main window and then moves it into the card, and the cell editor kept acting as if it were still in the main window; it now follows the document it's actually in.
+
 ## [0.14.0] - 2026-11-14
 
 ### Added
@@ -215,7 +223,8 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - First version: Markdown tables in Live Preview and Reading view become Notion-style tables. Click a cell to edit, Enter / Tab to move, add rows and columns, row and column handles plus a right-click menu, drag to resize columns, seven cell backgrounds, three styles and two row spacings; on mobile, tap to edit and long-press for the menu. Select a range to color, align or clear it at once; copy and paste with Excel, Feishu and the web; merge cells; drag row and column handles to reorder; sticky headers on long tables and scroll hints on wide ones. Fill handle; a per-table corner menu (style, three-line style, header column, align all, distribute or fit widths); sort by column; duplicate rows and columns and insert many at once; checkboxes; text colors; total rows; status columns; formatting keys plus [[ link and # tag completion while editing; Insert table and Convert text to table commands. Styled HTML copy. Coexists with Advanced Tables formulas and block ids. Files stay plain Markdown tables, with widths, colors, merges and more in one comment below the table.
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.14.0...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.15.0...HEAD
+[0.15.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.14.0...0.15.0
 [0.14.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.13.3...0.14.0
 [0.13.3]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.13.2...0.13.3
 [0.13.2]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.13.1...0.13.2
