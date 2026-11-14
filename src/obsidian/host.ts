@@ -2,7 +2,7 @@
 
 import { type ColorMemory, pushRecent } from "../core/color-palette";
 import { type App, type Component, type HoverParent, Keymap, MarkdownRenderer, Menu, Notice, setIcon } from "obsidian";
-import type { EditorHost, TableEditor } from "../editor/editor";
+import type { EditorHost, MenuItem, TableEditor } from "../editor/editor";
 import { t } from "../editor/i18n";
 import { guardEditorHotkeys } from "./keys";
 
@@ -62,6 +62,27 @@ export interface TableHostFactory {
 function linkContextMenu(app: App, menu: Menu, linktext: string, sourcePath: string): void {
   const ws = app.workspace as unknown as { handleLinkContextMenu?: (menu: Menu, linktext: string, sourcePath: string) => boolean };
   ws.handleLinkContextMenu?.(menu, linktext, sourcePath);
+}
+
+/** Obsidian 菜单里别的插件加的项，转成表格菜单的项。读的是 Menu 的内部字段：对不上就当没有（那也不会另弹菜单） */
+function foreignMenuItems(menu: Menu): MenuItem[] {
+  type Raw = { titleEl?: HTMLElement; iconEl?: HTMLElement; dom?: HTMLElement; disabled?: boolean; checked?: boolean | null; submenu?: unknown; handleEvent?: (ev: MouseEvent) => void };
+  const raw = (menu as unknown as { items?: unknown[] }).items;
+  if (!Array.isArray(raw)) return [];
+  const out: MenuItem[] = [];
+  for (const r of raw as Raw[]) {
+    const title = r?.titleEl?.textContent?.trim();
+    if (!title || r.submenu || typeof r.handleEvent !== "function" || r.dom?.hasClass("is-label")) continue;
+    out.push({
+      title,
+      iconNode: r.iconEl?.firstElementChild ?? undefined,
+      disabled: !!r.disabled,
+      checked: !!r.checked,
+      danger: !!r.dom?.hasClass("is-warning"),
+      run: () => r.handleEvent?.(new MouseEvent("click")),
+    });
+  }
+  return out;
 }
 
 /** 把格子里显示的图片复制到剪贴板（转成 PNG，剪贴板只认这个） */
@@ -133,14 +154,15 @@ export function makeFactory(app: App, settings: () => TableSettings, persist: ()
           });
         },
         // 右键格子里的双链：和笔记里一样的原生菜单（新标签页打开、重命名、移动、在访达中显示……，别的插件加的项也在）
+        // 用 Menu.forEvent：这次右键只有一个菜单，别的插件（比如 adjustable-media）往同一个右键事件里加的项也进这个菜单。
+        // 自己 new Menu() 的话，别的插件会另弹一个菜单把这个顶掉，开着「原生菜单」时就什么都看不到（#9）。它会在下一刻自己弹出来
         linkMenu: (ev, href) => {
-          const menu = new Menu();
+          const menu = Menu.forEvent(ev);
           linkContextMenu(app, menu, href, sourcePath);
-          menu.showAtMouseEvent(ev);
         },
         // 右键格子里的图片：复制图片 + 原生的文件菜单 + 删除图片（删文件前用 Obsidian 自己的确认框，删了再把格子里的嵌入去掉）
         imageMenu: (ev, img, link, remove) => {
-          const menu = new Menu();
+          const menu = Menu.forEvent(ev);
           menu.addItem((item) =>
             item
               .setSection("action")
@@ -161,7 +183,15 @@ export function makeFactory(app: App, settings: () => TableSettings, persist: ()
                   if (await app.fileManager.promptForDeletion(file)) remove();
                 }),
             );
-          menu.showAtMouseEvent(ev);
+        },
+        // 右键普通格子：表格弹的是自己画的菜单。别的插件用 Menu.forEvent 往这次右键里加项，Obsidian 会另弹一个只有那几项的菜单
+        // （开着「原生菜单」时还盖在表格菜单上面，#9）。这里先认领这次右键的菜单，不让它弹，把里面的项交给表格菜单
+        eventMenuItems: (ev, take) => {
+          const menu = Menu.forEvent(ev);
+          menu.showAtMouseEvent = () => {
+            take(foreignMenuItems(menu));
+            return menu;
+          };
         },
         // 粘贴的图片按 Obsidian 的附件设置存，名字和 Obsidian 自己粘贴的一样
         saveImage: async (file) => {
