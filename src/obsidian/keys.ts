@@ -25,16 +25,25 @@ interface CommandLike {
   editorCheckCallback?: unknown;
 }
 
-/** 编辑器命令的快捷键（用户改过的优先，没改的用默认） */
-function editorHotkeys(app: App): Hotkey[] {
+/** Obsidian 的格式命令 → 表格里对应的格式。用户把这些命令改成了别的快捷键，在表格里按也照样起作用 */
+const FORMAT_COMMANDS: Record<string, "bold" | "italic" | "strike" | "highlight" | "link"> = {
+  "editor:toggle-bold": "bold",
+  "editor:toggle-italics": "italic",
+  "editor:toggle-strikethrough": "strike",
+  "editor:toggle-highlight": "highlight",
+  "editor:insert-link": "link",
+};
+
+/** 编辑器命令的快捷键（用户改过的优先，没改的用默认），带上是哪个命令 */
+function editorHotkeys(app: App): (Hotkey & { command?: string })[] {
   const a = app as unknown as { hotkeyManager?: HotkeyManager; commands?: { commands?: Record<string, CommandLike> } };
   const hm = a.hotkeyManager;
   const cmds = Object.values(a.commands?.commands ?? {});
-  const out: Hotkey[] = [];
+  const out: (Hotkey & { command?: string })[] = [];
   for (const c of cmds) {
     if (!c.editorCallback && !c.editorCheckCallback) continue;
     const keys = hm?.getHotkeys(c.id) ?? hm?.getDefaultHotkeys(c.id) ?? [];
-    out.push(...keys);
+    out.push(...keys.map((k) => ({ ...k, command: c.id })));
   }
   return out;
 }
@@ -59,15 +68,17 @@ export function guardEditorHotkeys(app: App, editor: TableEditor): () => void {
     scope = new Scope(app.scope);
     // 只注册编辑器命令的快捷键（加上表格自己的格式键）：没注册的键照常交给 Obsidian（⌘P、切换标签页……）
     const list = editorHotkeys(app);
-    const keys = [...(list.length ? list : FALLBACK), ...OWN];
+    const keys: (Hotkey & { command?: string })[] = [...(list.length ? list : FALLBACK), ...OWN];
     const seen = new Set<string>();
     for (const hk of keys) {
       const id = [...hk.modifiers].sort().join("+") + "+" + hk.key.toLowerCase();
       if (seen.has(id)) continue;
       seen.add(id);
+      const format = hk.command ? FORMAT_COMMANDS[hk.command] : undefined;
       scope.register(hk.modifiers as Modifier[], hk.key, (ev: KeyboardEvent) => {
-        // 加粗、斜体、删除线、高亮、链接由表格处理；别的编辑器命令直接拦下，不让它改到正文
-        editor.formatKey(ev);
+        // 加粗、斜体、删除线、高亮、链接由表格处理（按 ⌘B 这类固定键，或用户给这几个命令设的键）；
+        // 别的编辑器命令直接拦下，不让它改到正文
+        if (!editor.formatKey(ev) && format) editor.formatCommand(format);
         return false;
       });
     }
