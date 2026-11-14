@@ -119,7 +119,13 @@ function domSize(tableEl: HTMLTableElement): [number, number] {
  * 引用块、callout 里的不归我们管，跳过；行数列数对不上的那张不换，保持原生，不会把别的表的样式套上去。
  * 只读：不写回、没有手柄。格子里的 Markdown 异步渲染，把等待交给 Obsidian（ctx.promises），印之前会等它们画完
  */
-async function exportProcessor(app: App, factory: TableHostFactory, el: HTMLElement, ctx: MarkdownPostProcessorContext): Promise<void> {
+async function exportProcessor(
+  app: App,
+  factory: TableHostFactory,
+  el: HTMLElement,
+  ctx: MarkdownPostProcessorContext,
+  strict = false,
+): Promise<void> {
   const file = app.vault.getAbstractFileByPath(ctx.sourcePath);
   if (!(file instanceof TFile)) return;
   const tables = Array.from(el.querySelectorAll<HTMLTableElement>("table")).filter(
@@ -131,6 +137,8 @@ async function exportProcessor(app: App, factory: TableHostFactory, el: HTMLElem
   const promises = (ctx as MarkdownPostProcessorContext & { promises?: Promise<unknown>[] }).promises;
   const local: Promise<unknown>[] = [];
   const sized: TableEditor[] = [];
+  // 先全部对一遍再换：strict（别的插件的渲染）时有一张对不上就整篇都不换，免得把片段里的表套错
+  const pairs: [HTMLTableElement, Table][] = [];
   let bi = 0;
   for (const tableEl of tables) {
     const [rows, cols] = domSize(tableEl);
@@ -138,15 +146,20 @@ async function exportProcessor(app: App, factory: TableHostFactory, el: HTMLElem
     let hit = -1;
     for (let j = bi; j < blocks.length; j++) {
       const t = blockTable(lines, blocks[j]);
-      if (t && t.cells.length === rows && (t.cells[0]?.length ?? 0) === cols) {
+      if (t && t.cells.length === rows && (t.cells[0]?.length ?? 0) === cols && (!strict || headerLooksSame(tableEl, t))) {
         hit = j;
         break;
       }
     }
-    if (hit < 0) continue;
-    const table = blockTable(lines, blocks[hit]);
+    const table = hit < 0 ? null : blockTable(lines, blocks[hit]);
+    if (!table) {
+      if (strict) return;
+      continue;
+    }
     bi = hit + 1;
-    if (!table) continue;
+    pairs.push([tableEl, table]);
+  }
+  for (const [tableEl, table] of pairs) {
     const holder = createDiv({ cls: "ggt-reading" });
     tableEl.replaceWith(holder);
     const child = new TableChild(holder);
@@ -191,13 +204,52 @@ function fitWidths(root: HTMLElement): void {
   tableEl.setCssStyles({ tableLayout: "fixed", width: `min(100%, ${Math.ceil(total)}px)` });
 }
 
+const squash = (s: string) => s.replace(/\s+/g, "");
+
+/** 表头每格显示的文字都能在原文那一格里找到（公式、图片、链接这类显示和原文对不上的格子不比） */
+function headerLooksSame(tableEl: HTMLTableElement, table: Table): boolean {
+  const head = tableEl.rows[0];
+  if (!head) return false;
+  return Array.from(head.cells).every((cell, c) => {
+    const shown = squash(cell.textContent ?? "");
+    if (!shown || cell.querySelector(".math, img, .internal-embed, a")) return true;
+    return squash(table.cells[0]?.[c] ?? "").includes(shown);
+  });
+}
+
+/**
+ * 拿不到行号、也不在页面上的渲染：Export Image 这类插件把整篇笔记用 MarkdownRenderer 重新渲染到一块没挂上页面的元素里再截图（#7）。
+ * 后处理是一段一段调的，单看一段不知道是第几张表，等这一轮渲染完（各段都放进了同一个容器）再按整篇对一次
+ */
+const pendingDetached = new Map<HTMLElement, MarkdownPostProcessorContext>();
+let detachedTimer = 0;
+function queueDetached(app: App, factory: TableHostFactory, el: HTMLElement, ctx: MarkdownPostProcessorContext): void {
+  pendingDetached.set(el, ctx);
+  if (detachedTimer) return;
+  detachedTimer = window.setTimeout(() => {
+    detachedTimer = 0;
+    const roots = new Map<HTMLElement, MarkdownPostProcessorContext>();
+    for (const [sec, c] of pendingDetached) {
+      let root = sec;
+      while (root.parentElement) root = root.parentElement;
+      // 挂上页面了（比如悬停预览）或者已经交给别的路子：不管
+      if (root.isConnected || roots.has(root)) continue;
+      roots.set(root, c);
+    }
+    pendingDetached.clear();
+    for (const [root, c] of roots) void exportProcessor(app, factory, root, c, true);
+  }, 0);
+}
+
 export function readingProcessor(app: App, factory: TableHostFactory) {
   return async (el: HTMLElement, ctx: MarkdownPostProcessorContext): Promise<void> => {
     if (!factory.enabled()) return;
     const info = ctx.getSectionInfo(el);
     if (!info) {
-      // 导出 PDF 时整篇一次渲染，el 是整篇的容器（带 markdown-preview-view）；别的地方拿不到行号的照旧不管
+      // 导出 PDF 时整篇一次渲染，el 是整篇的容器（带 markdown-preview-view）
       if (el.closest(".print")) await exportProcessor(app, factory, el, ctx);
+      // 别的插件把笔记渲染到页面外（导出图片）：等这一轮渲染完按整篇对；页面上拿不到行号的照旧不管
+      else if (!el.isConnected && el.querySelector("table")) queueDetached(app, factory, el, ctx);
       return;
     }
     // 原文正常拿得到时同步处理（不多等一拍，免得先闪一下原生表格）
