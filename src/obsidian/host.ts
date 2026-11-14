@@ -25,6 +25,8 @@ export interface TableSettings {
   fitCols: boolean;
   /** 表格样式优先于主题（默认开）：主题给 table / th / td 写了 !important 的边框、底色、文字颜色也压过去 */
   strictStyle: boolean;
+  /** 格子左右内边距（像素，默认 10）：嫌格子两边空得多可以调小（#14）；「紧凑」行距时最多 8 */
+  cellPadX: number;
   /** 格式栏颜色下拉记住的颜色：上次用的、最近使用（按文字颜色 text / 荧光笔 bg 分开） */
   colorMemory?: { last?: Record<string, string>; recent?: Record<string, string[]> };
 }
@@ -44,6 +46,7 @@ export const DEFAULT_SETTINGS: TableSettings = {
   fullWidth: false,
   fitCols: true,
   strictStyle: true,
+  cellPadX: 10,
 };
 
 export interface TableHostFactory {
@@ -246,6 +249,9 @@ export function makeFactory(app: App, settings: () => TableSettings, persist: ()
       root.dataset.defFull = settings().fullWidth ? "1" : "";
       root.dataset.defFit = settings().fitCols ? "1" : "";
       root.dataset.defStrict = settings().strictStyle ? "1" : "";
+      const pad = settings().cellPadX;
+      if (pad !== 10 && [4, 6, 8].includes(pad)) root.style.setProperty("--ggt-pad-user", `${pad}px`);
+      else root.style.removeProperty("--ggt-pad-user");
       root.dispatchEvent(new Event("ggt-restyle"));
     },
   };

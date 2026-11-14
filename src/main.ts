@@ -140,6 +140,18 @@ class TableSettingTab extends PluginSettingTab {
           }),
       );
     new Setting(containerEl)
+      .setName(zh ? "格子左右内边距" : "Cell side padding")
+      .setDesc(zh ? "格子里文字离左右边框多远。嫌格子两边空得多可以调小；行距选「紧凑」的表格最多 8。" : "How far text sits from a cell's left and right borders. Lower it if cells feel too roomy; Compact tables use at most 8.")
+      .addDropdown((dd) =>
+        dd
+          .addOptions(zh ? { "4": "4（很窄）", "6": "6", "8": "8", "10": "10（默认）" } : { "4": "4 (tight)", "6": "6", "8": "8", "10": "10 (default)" })
+          .setValue(String(s.cellPadX))
+          .onChange(async (v) => {
+            s.cellPadX = Number(v);
+            await this.plugin.saveSettings();
+          }),
+      );
+    new Setting(containerEl)
       .setName(zh ? "行距" : "Row spacing")
       .addDropdown((dd) =>
         dd

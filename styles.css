@@ -12,7 +12,7 @@
   --ggt-sel: var(--interactive-accent);
   --ggt-sel-soft: rgba(var(--interactive-accent-rgb, 72, 54, 153), 0.08);
   --ggt-pad-y: 7px;
-  --ggt-pad-x: 10px;
+  --ggt-pad-x: var(--ggt-pad-user, 10px);
   --ggt-font-size: var(--table-text-size, 0.93em);
   position: relative;
   margin: 0.4em 0 0.8em;
@@ -22,7 +22,7 @@
   max-width: calc(100% + 40px);
   box-sizing: border-box;
 }
-.ggt[data-density="compact"] { --ggt-pad-y: 3px; --ggt-pad-x: 8px; }
+.ggt[data-density="compact"] { --ggt-pad-y: 3px; --ggt-pad-x: min(8px, var(--ggt-pad-user, 10px)); }
 
 /* 右边、下边留出位置：骑在表格右下角的填充柄（连同它放大的点击范围）不会被裁掉，也不会把表格撑出横向滚动 */
 .ggt-scroll { overflow-x: auto; overflow-y: visible; padding: 0 12px 12px 0; margin: 0 -12px -12px 0; }
