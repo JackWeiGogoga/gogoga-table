@@ -705,3 +705,12 @@
 /* 选中格所在列的表头淡色高亮（选了一片时不要） */
 .ggt.ggt.is-strict .ggt-table thead .ggt-cell.is-sel-head:not([data-bg]) { background-image: linear-gradient(var(--ggt-sel-soft), var(--ggt-sel-soft)) !important; }
 .ggt.ggt.is-strict.has-range .ggt-table thead .ggt-cell.is-sel-head:not([data-bg]) { background-image: none !important; }
+
+/* Export Image 插件导出图片：它复制编辑器里画好的表格去截图，复制件没有脚本，拖过列宽的表格按记下的比例缩到图片宽（#7） */
+.export-image-root .ggt-table[style*="--ggt-total"] {
+  width: min(100%, var(--ggt-total)) !important;
+  table-layout: fixed !important;
+}
+.export-image-root .ggt-table col[style*="--ggt-pct"] {
+  width: var(--ggt-pct) !important;
+}

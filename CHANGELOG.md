@@ -5,7 +5,7 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ## [Unreleased]
 
 ### Fixed
-- Exporting a note with the Export Image plugin (#7): tables came out as plain Obsidian tables, losing merged cells, colors, column widths and styles. Tables in the exported image now look the same as in the note (read-only).
+- Exporting a note with the Export Image plugin (#7): tables came out as plain Obsidian tables, losing merged cells, colors, column widths and styles. Tables in the exported image (whole note, selection, or a folder) now look the same as in the note (read-only), and tables with dragged column widths shrink to the image width instead of being cut off.
 
 ## [0.12.0] - 2026-11-14
 

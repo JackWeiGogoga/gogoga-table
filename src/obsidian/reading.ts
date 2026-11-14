@@ -176,7 +176,12 @@ async function exportProcessor(
     const editor = new TableEditor(holder, table, host);
     child.editor = editor;
     factory.style(editor.root);
-    if (table.meta.w?.some((w) => w)) sized.push(editor);
+    if (table.meta.w?.some((w) => w)) {
+      // 页面外的渲染量不出宽度，而且 Export Image 是把渲染结果复制一份去截图（复制件上没有我们的脚本）：
+      // 直接按存着的列宽换成百分比写进去，复制过去也能缩到页面宽
+      if (strict) fitStoredWidths(editor.root, table.meta.w);
+      else sized.push(editor);
+    }
   }
   if (!sized.length) return;
   await Promise.all(local);
@@ -239,6 +244,19 @@ function queueDetached(app: App, factory: TableHostFactory, el: HTMLElement, ctx
     pendingDetached.clear();
     for (const [root, c] of roots) void exportProcessor(app, factory, root, c, true);
   }, 0);
+}
+
+/** 按存着的列宽（像素，没拖过的列是 0）换成百分比：没拖过的列按拖过的平均宽度算；表格宽度取总宽和页面宽里小的 */
+function fitStoredWidths(root: HTMLElement, stored: (number | null)[]): void {
+  const tableEl = root.querySelector<HTMLTableElement>("table.ggt-table");
+  const cols = tableEl ? Array.from(tableEl.querySelectorAll<HTMLElement>("colgroup > col")) : [];
+  if (!tableEl || !cols.length) return;
+  const set = stored.filter((w): w is number => !!w && w > 0);
+  const avg = set.reduce((a, b) => a + b, 0) / set.length;
+  const widths = cols.map((_, c) => stored[c] || avg);
+  const total = widths.reduce((a, b) => a + b, 0);
+  cols.forEach((col, c) => col.setCssStyles({ width: `${((widths[c] / total) * 100).toFixed(3)}%` }));
+  tableEl.setCssStyles({ tableLayout: "fixed", width: `min(100%, ${Math.ceil(total)}px)` });
 }
 
 export function readingProcessor(app: App, factory: TableHostFactory) {

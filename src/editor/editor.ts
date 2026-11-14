@@ -620,10 +620,19 @@ export class TableEditor {
     this.marked = [];
     this.crossed = [];
     const colgroup = this.tableEl.appendChild(doc.createElement("colgroup"));
+    // 拖过列宽的：再记一份按比例的宽度（没拖过的列按拖过的平均宽度算）。Export Image 这类插件把画好的表格复制一份去截图，
+    // 复制件上没有脚本，「列宽按比例缩放」不起作用，靠样式里用这份比例缩到图片宽（#7）
+    const ws = Array.from({ length: cols }, (_, c) => widthOf(tb, c) ?? 0);
+    const set = ws.filter((w) => w > 0);
+    const avg = set.length ? set.reduce((a, b) => a + b, 0) / set.length : 0;
+    const total = ws.reduce((a, w) => a + (w || avg), 0);
+    if (set.length) this.tableEl.setCssProps({ "--ggt-total": `${Math.ceil(total)}px` });
+    else this.tableEl.style.removeProperty("--ggt-total");
     for (let c = 0; c < cols; c++) {
       const col = colgroup.appendChild(doc.createElement("col"));
-      const w = widthOf(tb, c);
+      const w = ws[c];
       if (w) col.style.width = `${w}px`;
+      if (set.length) col.setCssProps({ "--ggt-pct": `${(((w || avg) / total) * 100).toFixed(3)}%` });
     }
     const thead = this.tableEl.appendChild(doc.createElement("thead"));
     const tbody = this.tableEl.appendChild(doc.createElement("tbody"));
