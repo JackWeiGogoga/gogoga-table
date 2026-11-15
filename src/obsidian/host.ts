@@ -111,6 +111,15 @@ async function copyImage(img: HTMLImageElement): Promise<boolean> {
   }
 }
 
+/** 右键格子里的双链、图片时弹出的菜单：点表格里别处时要替它收起来（#9） */
+let shownMenu: Menu | null = null;
+function keepMenu(menu: Menu): void {
+  shownMenu = menu;
+  menu.onHide(() => {
+    if (shownMenu === menu) shownMenu = null;
+  });
+}
+
 /** 本地时间的 YYYYMMDDHHmmss（和 Obsidian 粘贴图片的文件名一样） */
 function stamp(d = new Date()): string {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -161,11 +170,13 @@ export function makeFactory(app: App, settings: () => TableSettings, persist: ()
         // 自己 new Menu() 的话，别的插件会另弹一个菜单把这个顶掉，开着「原生菜单」时就什么都看不到（#9）。它会在下一刻自己弹出来
         linkMenu: (ev, href) => {
           const menu = Menu.forEvent(ev);
+          keepMenu(menu);
           linkContextMenu(app, menu, href, sourcePath);
         },
         // 右键格子里的图片：复制图片 + 原生的文件菜单 + 删除图片（删文件前用 Obsidian 自己的确认框，删了再把格子里的嵌入去掉）
         imageMenu: (ev, img, link, remove) => {
           const menu = Menu.forEvent(ev);
+          keepMenu(menu);
           menu.addItem((item) =>
             item
               .setSection("action")
@@ -187,6 +198,7 @@ export function makeFactory(app: App, settings: () => TableSettings, persist: ()
                 }),
             );
         },
+        dismissMenus: () => shownMenu?.hide(),
         // 右键普通格子：表格弹的是自己画的菜单。别的插件用 Menu.forEvent 往这次右键里加项，Obsidian 会另弹一个只有那几项的菜单
         // （开着「原生菜单」时还盖在表格菜单上面，#9）。这里先认领这次右键的菜单，不让它弹，把里面的项交给表格菜单
         eventMenuItems: (ev, take) => {
