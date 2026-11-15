@@ -407,13 +407,16 @@ export function livePreviewTables(factory: TableHostFactory): Extension {
    * 当前这一处挪到表格外面、选区换到别处，就去掉
    */
   let shown = "";
+  // 标出来的是查找框的当前这一处：查找框关了（Esc、点 ×）就去掉
+  let fromBar = false;
   clearSearchMark();
   const revealListener = EditorView.updateListener.of((u) => {
     let hit: { tableFrom: number; from: number; to: number } | null = null;
     for (const tr of u.transactions) for (const e of tr.effects) if (e.is(revealEffect)) hit = e.value;
+    const bar = findBarOpen(u.view);
     if (!hit) hit = findBarMatch(u.view, u.state.field(field, false));
     if (!hit) {
-      if (shown && (u.selectionSet || u.docChanged || findBarOpen(u.view))) {
+      if (shown && (u.selectionSet || u.docChanged || bar || fromBar)) {
         shown = "";
         clearSearchMark();
       }
@@ -422,6 +425,7 @@ export function livePreviewTables(factory: TableHostFactory): Extension {
     const key = `${hit.from}:${hit.to}`;
     if (key === shown && !u.docChanged) return;
     shown = key;
+    fromBar = bar;
     const where = cellOfRange(u.state.doc, hit.tableFrom, hit.from, hit.to);
     if (!where) return;
     const view = u.view;
