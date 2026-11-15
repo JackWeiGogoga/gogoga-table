@@ -7,6 +7,9 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - Fold a table (suggested on Bilibili): "Fold table (header only)" in the table's corner menu shows just the header plus a "▸ Show N rows" bar, saved as `"fold":1` in the comment so it stays folded when you reopen the note. Click the bar to unfold (the fold is removed); in Reading view the click only unfolds it there, without changing the file. While folded, the keyboard can't move into hidden rows, there are no row handles, add-row buttons or fill handle, and a search that jumps to a hidden row unfolds the table on the spot.
 
+### Changed
+- "Header rows" in the table's corner menu is now one row of 1 / 2 / 3 buttons, so the menu is shorter and fits short windows without scrolling.
+
 ## [0.15.2] - 2026-11-15
 
 ### Fixed
