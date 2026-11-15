@@ -144,6 +144,10 @@ Notion、飞书文档那样的表格：好看，点格子就能改，底色、�
 - 接管顶格写的表格，和列表项下面缩进写的表格（紧跟着列表项或隔一个空行，每行缩进一样）。代码块、引用和 callout（`>` 开头）里的表格，以及不在列表里的缩进，仍由 Obsidian 原生显示。
 - 紧跟在一段文字后面（中间没空行）的表格不接管，交给 Obsidian 原样处理。
 
+## 交流
+
+用法问题、建议可以加微信 `JackWeiGogoga`（备注「gogoga」），我拉你进交流群，二维码在[官网交流页](https://obsidian.gogoga.top/community/)。bug 和功能建议请在本仓库的 [Issues](https://github.com/JackWeiGogoga/gogoga-table/issues) 里提，附上截图或录屏和版本号。
+
 ## 许可
 
 [MIT](LICENSE)

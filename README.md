@@ -144,6 +144,10 @@ The table processing itself is fast: on 2,000 rows × 20 columns, parsing, writi
 - Tables at the start of a line, and tables indented under a list item (right after the item or after one blank line, every row with the same indentation). Tables in code blocks, quotes and callouts (lines starting with `>`), and indented text outside lists, are left to Obsidian.
 - A table directly after a paragraph (no blank line in between) is left to Obsidian.
 
+## Community
+
+Bugs and feature requests: please open an [issue](https://github.com/JackWeiGogoga/gogoga-table/issues) with a screenshot or recording and the version. Chinese-speaking users can also join the WeChat group: add `JackWeiGogoga` with the note “gogoga”, or scan the QR code on the [community page](https://obsidian.gogoga.top/en/community/).
+
 ## License
 
 [MIT](LICENSE)
