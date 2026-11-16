@@ -4,6 +4,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-16
+
 ### 新增
 - 计算列（B站、小红书用户的建议）：列菜单「设为计算列…」，用别的列的列名写公式，比如 `{单价} * {数量}`、`SUM({一月},{二月},{三月})`，每一行都自动算出来写进格子，笔记在哪儿看都还是普通的 Markdown 表格。输入 `{` 补全列名，或者点下面的列名插入；边输入边用第一行数据预览，公式写错了会说哪里错、不能确定。能用 `+ − × ÷`、括号、`SUM` `AVG` `MIN` `MAX` `ROUND`，小数位可以选自动或 0～3。计算列的格子不能手动改，粘贴、下拉填充会跳过它们；改了表头的列名，公式跟着改；删掉了被引用的列，表头的 **ƒx** 变红、整列留空。鼠标移到计算列的格子上，右上角浮出小 **ƒx**；点表头的 **ƒx** 改公式；「取消计算列」后格子里留着最后算出的数。公式存在表格注释的 `"fx"` 里（小数位在 `"fxd"`）。
 
@@ -250,7 +252,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 ### 新增
 - 第一个版本：实时预览和阅读视图里的 Markdown 表格换成 Notion 风格的表格。点格子编辑，Enter / Tab 跳格，加行加列，行列手柄和右键菜单，拖列宽，七种底色，三套样式和两档行距；手机上点一下编辑、长按出菜单。选一片格子一起设底色、对齐、清空；和 Excel、飞书、网页互相复制粘贴；合并单元格；拖动行列手柄调整顺序；长表格表头吸顶，宽表格左右有滚动提示。下拉填充；表格左上角菜单（单表样式、三线表、标题列、整表对齐、平均分布列宽、撑满页面）；按列排序；复制行列、一次插入多行；勾选框；文字颜色；合计行；状态列；编辑格子时的格式快捷键和 [[ 链接、# 标签补全；插入表格、文字转表格等命令。复制带样式的 HTML。兼容 Advanced Tables 的公式注释和块标识。文件仍是标准 Markdown 表格，列宽、颜色、合并等存在表格下面的一行注释里。
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.16.0...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.0...HEAD
+[0.17.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.16.0...0.17.0
 [0.16.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.15.2...0.16.0
 [0.15.2]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.15.1...0.15.2
 [0.15.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.15.0...0.15.1

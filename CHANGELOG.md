@@ -4,6 +4,8 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-16
+
 ### Added
 - Calculated columns (asked for on Bilibili and Xiaohongshu): column menu → **Make calculated column…** and write a formula that uses other columns' names in braces, such as `{Price} * {Qty}` or `SUM({Jan},{Feb},{Mar})`. Every row is calculated, and the results are written into the cells, so the note still reads as a plain Markdown table everywhere. Type `{` to pick a column name, or click one of the names below the box. The first row is previewed as you type, and a broken formula is explained and can't be saved. Formulas support `+ − × ÷`, parentheses, `SUM`, `AVG`, `MIN`, `MAX` and `ROUND`, and decimals can be set to Auto or 0–3. Calculated cells can't be typed into; paste and fill skip them. Renaming a header updates the formulas, and a formula whose column was deleted marks the column's **ƒx** in red and leaves the column empty. Hovering a calculated cell shows a small **ƒx** in its corner; click **ƒx** in the header to edit the formula. **Stop calculating this column** keeps the last results as ordinary text. Saved as `"fx"` (and `"fxd"` for decimals) in the table's comment.
 
@@ -250,7 +252,8 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - First version: Markdown tables in Live Preview and Reading view become Notion-style tables. Click a cell to edit, Enter / Tab to move, add rows and columns, row and column handles plus a right-click menu, drag to resize columns, seven cell backgrounds, three styles and two row spacings; on mobile, tap to edit and long-press for the menu. Select a range to color, align or clear it at once; copy and paste with Excel, Feishu and the web; merge cells; drag row and column handles to reorder; sticky headers on long tables and scroll hints on wide ones. Fill handle; a per-table corner menu (style, three-line style, header column, align all, distribute or fit widths); sort by column; duplicate rows and columns and insert many at once; checkboxes; text colors; total rows; status columns; formatting keys plus [[ link and # tag completion while editing; Insert table and Convert text to table commands. Styled HTML copy. Coexists with Advanced Tables formulas and block ids. Files stay plain Markdown tables, with widths, colors, merges and more in one comment below the table.
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.16.0...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.0...HEAD
+[0.17.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.16.0...0.17.0
 [0.16.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.15.2...0.16.0
 [0.15.2]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.15.1...0.15.2
 [0.15.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.15.0...0.15.1
