@@ -60,10 +60,10 @@ test("在表头区里插行、删行：表头跟着加减；在正文里不变",
   assert.equal(headRows(deleteRow(t, 3)), 2);
 });
 
-test("正文只剩一行时删不掉；第一行表头删不掉", () => {
+test("正文只剩一行时删不掉；多行表头里第一行能删（表头少一行，#17）", () => {
   const t = deleteRow(load(), 3);
   assert.equal(deleteRow(t, 2), t);
-  assert.equal(deleteRow(t, 0), t);
+  assert.equal(headRows(deleteRow(t, 0)), headRows(t) - 1);
 });
 
 test("移动行只在正文里：表头的行不动，正文的行也挪不进表头", () => {

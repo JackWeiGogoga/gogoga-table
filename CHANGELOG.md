@@ -4,6 +4,10 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Fixed
+- The header row can be deleted (#17): tables pasted in from elsewhere often have an empty first row. Right-click a header cell → **Delete header row (the next row becomes the header)**; it's greyed out when only one body row is left. In a multi-row header, deleting the first row makes the header one row shorter.
+- With glass-style themes such as OnePage, the right-click menu, table menu, format bar and link suggestions were see-through and the table text showed behind them. They now sit on a solid layer, blurred like Obsidian's own menus; opaque themes look the same as before.
+
 ## [0.16.0] - 2026-11-15
 
 ### Added

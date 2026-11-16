@@ -134,12 +134,13 @@ test("插入行：底色跟着往下挪", () => {
   assert.equal(t.cells.length, 3);
 });
 
-test("删行：这一行的底色去掉，下面的往上挪；表头和最后一行数据删不掉", () => {
+test("删行：这一行的底色去掉，下面的往上挪；最后一行数据删不掉；正文两行以上时表头能删、下一行顶上来（#17）", () => {
   const t = setBg(load(BASIC), [{ r: 1, c: 0 }, { r: 2, c: 1 }], "red");
   const n = deleteRow(t, 1);
   assert.deepEqual(n.cells.map((r) => r[0]), ["方案", "专业"]);
   assert.deepEqual(n.meta.bg, { B2: "red" });
-  assert.equal(deleteRow(t, 0), t);
+  assert.deepEqual(deleteRow(t, 0).cells[0], t.cells[1]);
+  assert.equal(deleteRow(n, 0), n);
   assert.equal(deleteRow(n, 1), n);
 });
 
