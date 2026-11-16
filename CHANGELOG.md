@@ -4,6 +4,9 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Fixed
+- In Live Preview, when a theme, CSS snippet or older Obsidian made blocks in the editor scroll sideways, an extra, useless horizontal scrollbar showed under tables (reported in GitHub PR #18). The wrapper around the table no longer scrolls, matching Reading view: a wide table scrolls only inside itself.
+
 ## [0.17.2] - 2026-11-16
 
 ### Changed
