@@ -85,7 +85,7 @@ Put the text in the top-left cell of the range and leave the other cells of the 
 
 ### Total row
 
-With `calc` set, the last row is the total row. Write it yourself, with a label such as `Total` in the first column and the computed values in the `calc` columns: the plugin recomputes them only after the table is edited, so wrong numbers would show until then. How values are computed: over the body rows (after the header rows, before the total row); `sum`, `avg`, `max`, `min` use cells that read as numbers (thousands separators, a leading `$ ¥ € £` and a trailing `%` are allowed), keep the largest number of decimals among them, and `avg` shows at least two decimals when it isn't whole; `count` counts non-empty cells.
+With `calc` set, the last row is the total row. Write it yourself, with a label in the first column (`Total` when every column sums, `Summary` when they mix kinds; the plugin shows small kind labels next to the numbers itself, so write plain numbers) and the computed values in the `calc` columns: the plugin recomputes them only after the table is edited, so wrong numbers would show until then. How values are computed: over the body rows (after the header rows, before the total row); `sum`, `avg`, `max`, `min` use cells that read as numbers (thousands separators, a leading `$ ¥ € £` and a trailing `%` are allowed), keep the largest number of decimals among them, and `avg` shows at least two decimals when it isn't whole; `count` counts non-empty cells.
 
 ### Calculated columns
 

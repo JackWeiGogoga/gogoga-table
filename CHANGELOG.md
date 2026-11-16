@@ -4,6 +4,9 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Changed
+- Total row (suggested on Bilibili): when every column sums, it's still called "Total"; when columns mix average, max or count, the first cell is renamed "Summary" and each number gets a small label (Sum, Max, Count…). The label is display only: the cell still holds just the number, so it copies into Excel as a number. Hovering a total cell tells you how it's worked out. A name you typed yourself is left alone.
+
 ## [0.17.0] - 2026-11-16
 
 ### Added
