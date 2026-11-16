@@ -56,6 +56,8 @@ Per-column keys are arrays indexed by column (index 0 = column A); use `null` fo
 | `bg` | per cell | Background color name | `"bg":{"A2":"green","B2":"green"}` |
 | `fg` | per cell | Text color name for the whole cell | `"fg":{"C4":"red"}` |
 | `merge` | array of ranges | Merged rectangles, each at least two cells | `"merge":["A3:A5","B1:D1"]` |
+| `fx` | per column | Calculated column: a formula using other columns' header names in braces; `null` for ordinary columns | `"fx":[null,null,null,"{Price}*{Qty}"]` |
+| `fxd` | per column | Decimals of a calculated column, `0`–`3`; `null` = auto (integer when whole, else up to 2) | `"fxd":[null,null,null,2]` |
 | `calc` | per column | Total: `"sum"`, `"avg"`, `"count"`, `"max"`, `"min"`. If any column has one, the **last row is the total row** | `"calc":[null,"sum","avg"]` |
 | `opts` | per column | Status column: an object mapping each status value to a color name; `null` for ordinary columns | `"opts":[null,{"Done":"green","Todo":"gray"}]` |
 | `headerCol` | `true` | Style the first column as a header column (tinted, bold) | `"headerCol":true` |
@@ -84,6 +86,18 @@ Put the text in the top-left cell of the range and leave the other cells of the 
 ### Total row
 
 With `calc` set, the last row is the total row. Write it yourself, with a label such as `Total` in the first column and the computed values in the `calc` columns: the plugin recomputes them only after the table is edited, so wrong numbers would show until then. How values are computed: over the body rows (after the header rows, before the total row); `sum`, `avg`, `max`, `min` use cells that read as numbers (thousands separators, a leading `$ ¥ € £` and a trailing `%` are allowed), keep the largest number of decimals among them, and `avg` shows at least two decimals when it isn't whole; `count` counts non-empty cells.
+
+### Calculated columns
+
+A column with an `fx` formula is calculated row by row; write the results into its cells yourself, because the plugin recalculates only after the table is edited. Formula syntax: column names in braces (`{Price}`, the text of the column's cell in the last header row), numbers, `+ - * /`, parentheses, and the functions `SUM`, `AVG`, `MIN`, `MAX` (any number of arguments; empty inputs are skipped) and `ROUND(x, places)`. Inputs are read like totals (thousands separators, a leading `$ ¥ € £`); `80%` counts as `0.8`. If an input is empty or not a number, or a division by zero happens, the result cell is empty. A referenced column name must be unique and non-empty, a formula can't refer to its own column, and calculated columns may refer to each other as long as there's no loop. Don't put hand-written data in a calculated column's body cells: it is replaced by the calculated results on the next edit (header and total row cells are not calculated).
+
+```
+| Item | Price | Qty | Amount |
+| --- | --- | --- | --- |
+| Apple | 12.5 | 3 | 37.5 |
+| Pear | 8 | 2 | 16 |
+<!-- gogoga-table: {"fx":[null,null,null,"{Price}*{Qty}"]} -->
+```
 
 ### Status columns
 

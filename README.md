@@ -45,6 +45,7 @@ It works as soon as it's on: Markdown tables in Live Preview and Reading view be
 - **Duplicate and insert many**: Duplicate row / column in the row and column menus; select several rows (or columns) and insert to add that many at once.
 - **Checkboxes**: `[ ]` or `[x]` in a cell becomes a clickable checkbox; Space toggles a selected one; right-click → Turn into checkbox.
 - **Text color**: the row of "A" swatches under the backgrounds in the right-click menu.
+- **Calculated columns**: column menu → Make calculated column… and write a formula with other columns' names in braces, e.g. `{Price} * {Qty}` or `SUM({Jan},{Feb},{Mar})` (`+ − × ÷`, parentheses, `SUM`, `AVG`, `MIN`, `MAX`, `ROUND`). Each row is calculated and the result written into the cell; empty or non-numeric inputs leave the result empty. Type `{` to pick a column, the first row is previewed as you type, decimals can be Auto or 0–3. Calculated cells can't be edited by hand; renaming a header updates the formulas; click **ƒx** in the header to edit; "Stop calculating this column" keeps the last results.
 - **Total row**: column menu → Total → Sum, Average, Count, Max or Min adds a "Total" row at the bottom that updates as the data changes; new rows go above it.
 - **Status columns**: column menu → Use as status column turns the values into colored labels, offers existing statuses while editing, and gives new ones a color; right-click a status to recolor it everywhere.
 - **While editing a cell**: ⌘B bold, ⌘I italic, ⌘U underline, ⌘⇧X strikethrough, ⌘⇧H highlight, ⌘K link; type `[[` for note links and `#` for tags. Obsidian's editor shortcuts never touch the note around the table while you're in it.
@@ -92,6 +93,8 @@ What the keys in the comment mean:
 | `va` | Vertical alignment of each column: `middle`, `bottom`; `null` is top |
 | `bg` / `fg` | Background / text color of a cell, keyed by cell address; the value is one of gray, red, orange, yellow, green, blue, purple |
 | `merge` | Merged ranges, such as `"A3:B3"` |
+| `fx` | Calculated column formula for each column, e.g. `"{Price}*{Qty}"`; `null` for ordinary columns. The cells hold the results |
+| `fxd` | Decimals for each calculated column (0–3); `null` is Auto |
 | `calc` | Total for each column: `sum`, `avg`, `count`, `max`, `min`; if any column has one, the last row is the total row |
 | `opts` | Status columns: "status value → color" for each column |
 | `headerCol` / `freeze` | First column as header (`true`) / freeze header column (`1`) |
