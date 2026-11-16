@@ -4,6 +4,11 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 
 ## [Unreleased]
 
+## [0.17.4] - 2026-11-17
+
+### 修复
+- Minimal 主题下，设置里的「表格默认撑满页面宽度」不生效，只有单张表菜单里的「撑满页面宽度」有用（#19）。原因是 Minimal 用优先级更高的规则把编辑区和阅读视图里所有表格的宽度设成了 auto，盖掉了插件的设置；现在插件的设置优先于主题。另外，开了这个设置的表格右边现在和「撑满页面宽度」撑到同一个位置（以前在所有主题下都比正文右边短 26px）。
+
 ## [0.17.3] - 2026-11-16
 
 ### 修复
@@ -270,7 +275,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 ### 新增
 - 第一个版本：实时预览和阅读视图里的 Markdown 表格换成 Notion 风格的表格。点格子编辑，Enter / Tab 跳格，加行加列，行列手柄和右键菜单，拖列宽，七种底色，三套样式和两档行距；手机上点一下编辑、长按出菜单。选一片格子一起设底色、对齐、清空；和 Excel、飞书、网页互相复制粘贴；合并单元格；拖动行列手柄调整顺序；长表格表头吸顶，宽表格左右有滚动提示。下拉填充；表格左上角菜单（单表样式、三线表、标题列、整表对齐、平均分布列宽、撑满页面）；按列排序；复制行列、一次插入多行；勾选框；文字颜色；合计行；状态列；编辑格子时的格式快捷键和 [[ 链接、# 标签补全；插入表格、文字转表格等命令。复制带样式的 HTML。兼容 Advanced Tables 的公式注释和块标识。文件仍是标准 Markdown 表格，列宽、颜色、合并等存在表格下面的一行注释里。
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.3...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.4...HEAD
+[0.17.4]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.3...0.17.4
 [0.17.3]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.2...0.17.3
 [0.17.2]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.1...0.17.2
 [0.17.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.0...0.17.1
