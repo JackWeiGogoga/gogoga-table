@@ -27,35 +27,38 @@ On phones, where moving files around is awkward, use the community plugins brows
 
 It works as soon as it's on: Markdown tables in Live Preview and Reading view become gogoga tables, with no new syntax to learn.
 
-- **Edit**: click a cell to select it and just type to replace it; double-click or press Enter to edit the existing text. While editing, Enter finishes and moves down, Shift+Enter adds a line break inside the cell, Tab / Shift+Tab move sideways, Esc cancels. Tab in the last cell adds a row.
+- **Edit**: click a cell to select it and just type to replace it; double-click or press Enter or Space to edit the existing text. While editing, Enter finishes and moves down, Shift+Enter adds a line break inside the cell, Tab / Shift+Tab move sideways, Esc saves and stops editing (⌘Z to undo). Tab in the last cell adds a row.
 - **Selected cell**: arrow keys move, Delete clears, ⌘Z / ⌘⇧Z undo and redo (same history as the editor). Moving up from the first row, down from the last, or pressing Esc puts the cursor back in the text around the table.
 - **Select a range**: drag across cells, Shift+click, or Shift+arrow keys. Color, align or clear (Delete) a whole range at once; right-click inside a range to act on all of it, and Esc goes back to a single cell.
 - **Copy and paste**: ⌘C / ⌘X copy the selected cells as tab-separated text (Excel, Numbers) plus a styled HTML table (backgrounds, text colors, bold, alignment, widths, merges) that keeps its look in Feishu, Word or email; pasting back into a gogoga table uses the Markdown source, so links and bold survive. ⌘V pastes tables copied from Excel, Feishu or web pages, tab-separated text, or Markdown table source, starting at the selected cell and adding rows and columns as needed; copy one cell and paste over a range to fill every cell. Copy at least two rows and two columns and paste into another note: colors, widths, merges and status columns come back as they were.
 - **Paste to create a table**: paste a table copied from Excel, WPS, Numbers, Feishu, Google Sheets or a web page into your note and it becomes a table, with the first row as the header and blank lines added around it. This only happens when the clipboard holds just a table (at least 2 rows and 2 columns); inside code blocks, math and frontmatter it pastes as plain text.
 - **Merge cells**: select a range and right-click → **Merge cells**; the merged cell shows all their text and nothing is lost; unmerging gives each cell its own text back. Right-click a merged cell → **Unmerge cells**. Inserting rows or columns inside a merged area grows it, deleting shrinks it.
-- **Add rows and columns**: hover the table and use the plus buttons on the right and bottom edges.
-- **Row and column handles**: hover a cell to show handles on its row's left edge and its column's top edge. Drag a handle to reorder rows or columns (backgrounds, widths and merges move along); click it for the row / column menu: insert, move, color the whole row or column, delete; the column menu also has alignment (horizontal and vertical) and auto width.
-- **Right-click a cell**: insert rows and columns, alignment (left / center / right, plus top / middle / bottom, per column), background, clear, delete.
+- **Add rows and columns**: hover the table for plus buttons on all four edges: right and bottom add a column / row at the end, left adds a column at the start, top adds a row below the header (in Markdown the header can only be the first row). The left and top ones don't show on phones.
+- **Row and column handles**: with the mouse in the first column, a row handle shows on that row's left edge; with the mouse in the header row, a column handle shows on that column's top edge. Drag a handle to reorder rows or columns (backgrounds, widths and merges move along); click it for the row / column menu: insert, move, color the whole row or column, delete; the column menu also has alignment (horizontal and vertical) and auto width.
+- **Right-click a cell**: insert rows and columns, alignment (left / center / right, plus top / middle / bottom, per column), background, Text size (Smallest, Small, Normal, Large, Largest), clear, delete. Works on a whole range at once.
 - **Column width**: drag the right edge of a header cell; double-click it to go back to auto.
 - **Backgrounds**: gray, red, orange, yellow, green, blue and purple, taken from your theme's colors and softened, so they work in light and dark mode.
 - **Fill handle**: drag the small square at the bottom-right of a selection to continue a series down or right: numbers count up, numbered text (Item 1), dates, weekdays and months continue, anything else is copied; hold ⌥ to always copy. Dragging past the edge adds rows or columns.
-- **Table menu** (top-left corner): style for this table (Default, Zebra, Minimal, Three-line) and row spacing, first column as header, align the whole table horizontally or vertically, distribute columns evenly, fit to page width, auto width for all columns, clear all colors; Copy table (pastes back into another note with its look) and Copy as Markdown table (plain GFM, without colors or other settings).
+- **Table menu** (top-left corner): style for this table (Default, Zebra, Minimal, Three-line), row spacing and **Table text size**, align the whole table horizontally or vertically; **Header rows** 1 / 2 / 3 (extra header rows stick to the top together and are left out of sorting, totals and fill); **Fold table (header only)**; **First column as header**, and once it's on, **Freeze header column** (the first column stays put when scrolling sideways); distribute columns evenly, fit to page width, auto width for all columns, clear all colors; Copy whole table (pastes back into another note with its look) and Copy as Markdown table (plain GFM, without colors or other settings); indent / outdent (hang the whole table under the list item above, or move it out of the list); delete table.
+- **Fold a table**: a folded table shows only its header and a "▸ Show N rows" bar, and stays folded when you reopen the note; click the bar to unfold. In Reading view, unfolding only opens it there and doesn't change the file.
 - **Sort**: from the column menu, A→Z or Z→A; numbers by value, dates by time, Chinese by pinyin, empty cells last; a total row stays put.
 - **Duplicate and insert many**: Duplicate row / column in the row and column menus; select several rows (or columns) and insert to add that many at once.
 - **Checkboxes**: `[ ]` or `[x]` in a cell becomes a clickable checkbox; Space toggles a selected one; right-click → Turn into checkbox.
 - **Text color**: the row of "A" swatches under the backgrounds in the right-click menu.
 - **Total row**: column menu → Total → Sum, Average, Count, Max or Min adds a "Total" row at the bottom that updates as the data changes; new rows go above it.
 - **Status columns**: column menu → Use as status column turns the values into colored labels, offers existing statuses while editing, and gives new ones a color; right-click a status to recolor it everywhere.
-- **While editing a cell**: ⌘B bold, ⌘I italic, ⌘⇧X strikethrough, ⌘⇧H highlight, ⌘K link; type `[[` for note links and `#` for tags. Obsidian's editor shortcuts never touch the note around the table while you're in it.
+- **While editing a cell**: ⌘B bold, ⌘I italic, ⌘U underline, ⌘⇧X strikethrough, ⌘⇧H highlight, ⌘K link; type `[[` for note links and `#` for tags. Obsidian's editor shortcuts never touch the note around the table while you're in it.
 - **Commands**: Insert table (pick the size on a grid; in the command palette choose **gogoga Table: Insert table** — the plain **Insert table** without the plugin name is Obsidian's own and has no size picker), Convert selected text (CSV or tab-separated) to table, and row/column insert, duplicate, delete, sort, merge, align and more, all in the command palette and bindable to hotkeys.
-- **Long and wide tables**: the header sticks to the top as you scroll down, and a soft shadow on either side shows when a wide table can scroll sideways.
-- **Mobile**: tap a cell to edit, long-press for the menu, swipe to scroll as usual; after tapping a cell its row and column handles appear, and you can drag them with a finger.
+- **Long and wide tables**: the header sticks to the top as you scroll down, and a soft shadow on either side shows when a wide table can scroll sideways. Drag a column wider than the page and the table keeps that width and scrolls sideways, even with **Scale column widths to fit** on; drag it back within the page, or use Fit to page width, and it scales again.
+- **Search**: when Find in file, global search or Omnisearch jumps into a table, the match in the cell gets an outline and is scrolled into view; a folded table unfolds right there.
+- **Mobile**: tap a cell to edit, long-press for the menu, swipe to scroll as usual; after tapping a cell its row and column handles appear, and you can drag them with a finger. A tapped cell also gets a round handle on its column's right edge: drag it sideways to resize the column, double-tap for auto width. While editing a cell, a table toolbar sits above the keyboard: Done, Undo, Redo, bold, italic, strikethrough, highlight, Insert link, Checkbox, New line in cell, Previous cell, Next cell.
 - Bold, links, `[[link\|alias]]`, tags and math render inside cells, and links open on click (Ctrl/Cmd-click for a new tab). Screenshots and copied images paste straight into a cell and are saved as attachments; images in cells are at most 320 px wide; double-click one to view it enlarged. Right-click an image in a cell for Copy image, open, rename, move, Delete image and more; right-click a link for the same link menu as in notes. Type `[[` (or 【【 with a Chinese input method) for link suggestions.
 
 ## Settings
 
 - **Enhance Markdown tables** (on by default): turn off to go back to Obsidian's own tables.
-- **Style**: Default (Notion-like: square corners, faint lines, a light header), Zebra, Minimal.
+- **Style**: Default (Notion-like: square corners, faint lines, a light header), Zebra, Minimal, Three-line.
+- **Cell side padding**: how far text sits from a cell's left and right borders: 4, 6, 8 or 10 (default 10); Compact tables use at most 8.
 - **Row spacing**: Comfortable, Compact.
 - **Tables fill the page width** (off by default): tables whose column widths you haven't set stretch to the page width; display only.
 - **Table style over theme** (on by default): themes like OnePage, Minimal, Blue Topaz, Border and phycat restyle table borders, header backgrounds and text colors with !important; on, tables keep this plugin's look, off, the theme's table style wins.
@@ -65,20 +68,40 @@ It works as soon as it's on: Markdown tables in Live Preview and Reading view be
 
 ## What's stored in your notes
 
-The table is a standard GFM table, with alignment in the standard `:---:` form. Column widths, backgrounds and merged cells, which Markdown can't express, go in one HTML comment right below the table:
+The table is a standard GFM table, with alignment in the standard `:---:` form. Column widths, colors, merged cells and other settings, which Markdown can't express, go in one HTML comment right below the table:
 
 ```markdown
 | Plan | Price | Storage |
 | :--- | :---: | ---: |
 | Basic | $1 | 5 GB |
+| Enterprise: contact us |  | Unlimited |
 <!-- gogoga-table: {"w":[120,null,200],"va":[null,"middle"],"bg":{"B2":"yellow"},"merge":["A3:B3"]} -->
 ```
 
-- Elsewhere, merged cells show as ordinary cells: the top-left one has the text and the rest are empty, so nothing is lost.
+- Elsewhere, merged cells show as ordinary cells and nothing is lost: merging leaves each cell's text where it was; once you edit the merged cell, all its text goes in the top-left cell and the rest are empty.
 - Cells are addressed like Excel: columns A, B, C, and row 1 is the header. Inserting, deleting or moving rows and columns updates the comment.
 - Other editors don't show the comment, and in Obsidian the plugin hides it. It sits below the table because a comment directly above stops Obsidian's own Live Preview from recognizing the table.
-- No comment is written when there are no widths or colors. If the comment is broken or removed, the table still shows, just without widths and colors.
+- No comment is written when nothing is set. If the comment is broken or removed, the table still shows, just without the settings it held (widths, colors, merges and so on).
 - Tables padded with spaces stay aligned after edits (CJK characters count as two columns), and tables without outer pipes are written back without them.
+
+What the keys in the comment mean:
+
+| Key | Meaning |
+|---|---|
+| `w` | Width of each column in pixels; `null` is auto |
+| `va` | Vertical alignment of each column: `middle`, `bottom`; `null` is top |
+| `bg` / `fg` | Background / text color of a cell, keyed by cell address; the value is one of gray, red, orange, yellow, green, blue, purple |
+| `merge` | Merged ranges, such as `"A3:B3"` |
+| `calc` | Total for each column: `sum`, `avg`, `count`, `max`, `min`; if any column has one, the last row is the total row |
+| `opts` | Status columns: "status value → color" for each column |
+| `headerCol` / `freeze` | First column as header (`true`) / freeze header column (`1`) |
+| `head` | Number of header rows, `2` or `3`; 1 when absent |
+| `style` / `density` | This table's own style and row spacing; follows the settings when absent |
+| `fs` / `fz` | Text size multiplier for the whole table / for a cell |
+| `wide` | `1`: a table dragged wider than the page that scrolls sideways |
+| `fold` | `1`: folded |
+
+Entries with the wrong type or an unknown color name are ignored; unknown keys are kept as they are. For each key's values, examples, and how rich text inside cells is stored, see [skills/gogoga-table/SKILL.md](skills/gogoga-table/SKILL.md), which you can also hand to an AI assistant to write tables for you.
 
 ## Performance
 
@@ -143,6 +166,8 @@ The table processing itself is fast: on 2,000 rows × 20 columns, parsing, writi
 - An Advanced Tables formula comment (`<!-- TBLFM -->`) or a block id (`^id`) under a table is kept as is, with our comment after it, so formulas and block references keep working.
 - Tables at the start of a line, and tables indented under a list item (right after the item or after one blank line, every row with the same indentation). Tables in code blocks, quotes and callouts (lines starting with `>`), and indented text outside lists, are left to Obsidian.
 - A table directly after a paragraph (no blank line in between) is left to Obsidian.
+- When exporting to PDF, or exporting a note to an image with the Export Image plugin, tables look the same as in the note (read-only).
+- Items other plugins add to the right-click menu (such as adjustable-media's "Wrap in a layout") are merged into the table's own menu, at the end, instead of a second menu popping up.
 
 ## Community
 
