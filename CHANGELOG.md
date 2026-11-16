@@ -4,6 +4,9 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Fixed
+- A second horizontal scroll bar appeared under tables in Live Preview: Obsidian gives every non-editable block in the editor `overflow-x: auto`, which included the `.ggt-lp` wrapper around the table, so there was one scroll bar for the table's own scrolling area and another one below it (both visible on Windows, or on macOS with scroll bars always shown). The wrapper no longer scrolls, matching Reading view: nothing shows while the table fits, and a wide table scrolls only inside itself.
+
 ## [0.17.0] - 2026-11-16
 
 ### Added
