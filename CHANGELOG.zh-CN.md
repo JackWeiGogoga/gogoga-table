@@ -4,6 +4,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-11-16
+
 ### 改进
 - 合计行（B 站 lucent2019 的建议）：各列都是求和时照旧叫「合计」；混着平均、最大、计数时，第一格自动改叫「统计」，每个数前面用小字标出是求和、最大还是计数。标签只是显示，格子里还是纯数字，复制到 Excel 照样能算。鼠标停在合计格上会说是怎么算的。自己改过的名字不会被改掉。
 
@@ -255,7 +257,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 ### 新增
 - 第一个版本：实时预览和阅读视图里的 Markdown 表格换成 Notion 风格的表格。点格子编辑，Enter / Tab 跳格，加行加列，行列手柄和右键菜单，拖列宽，七种底色，三套样式和两档行距；手机上点一下编辑、长按出菜单。选一片格子一起设底色、对齐、清空；和 Excel、飞书、网页互相复制粘贴；合并单元格；拖动行列手柄调整顺序；长表格表头吸顶，宽表格左右有滚动提示。下拉填充；表格左上角菜单（单表样式、三线表、标题列、整表对齐、平均分布列宽、撑满页面）；按列排序；复制行列、一次插入多行；勾选框；文字颜色；合计行；状态列；编辑格子时的格式快捷键和 [[ 链接、# 标签补全；插入表格、文字转表格等命令。复制带样式的 HTML。兼容 Advanced Tables 的公式注释和块标识。文件仍是标准 Markdown 表格，列宽、颜色、合并等存在表格下面的一行注释里。
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.0...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.1...HEAD
+[0.17.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.0...0.17.1
 [0.17.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.16.0...0.17.0
 [0.16.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.15.2...0.16.0
 [0.15.2]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.15.1...0.15.2
