@@ -4,6 +4,12 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Changed
+- Long, wide tables (suggested on Bilibili): when a table's own horizontal scrollbar is below the visible area, a horizontal scrollbar floats at the bottom of the view and scrolls the table with it, so you don't have to scroll to the end of the table first. It goes away once the table's bottom edge is in view.
+
+### Fixed
+- Middle-click autoscroll (click the middle button, then move the mouse to scroll in any direction) was blocked over tables; it works again, as with Obsidian's own tables.
+
 ## [0.17.1] - 2026-11-16
 
 ### Changed
