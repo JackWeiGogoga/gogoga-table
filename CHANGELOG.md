@@ -4,6 +4,13 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Added
+- Column types (suggested by HARUKA春花 on Xiaohongshu, plus formatted results for calculated columns): the column menu's **Column type: …** opens a submenu with Text, Status (single select), Multi-select tags, Date, Number and Progress bar. Cells still hold plain readable text, so the note reads fine without the plugin; the type is saved as `"ty"` in the table's comment.
+  - **Date**: editing a date cell shows a calendar; click a day to fill the cell, or use Today and Clear, or just type and the calendar follows. Write dates as `2026-11-17`, `2026/11/17` or a daily note link `[[2026-11-17]]` (using your Daily notes date format). Cells that are only a date are padded and switched to the column's style.
+  - **Number**: thousands separator, percent, currency (¥ $ € £) and decimals; values are written in that format when you commit, so `1200` becomes `¥1,200.00`. Extra decimals you type are kept rather than rounded away. In a percent column, typing `12` gives `12%`. Calculated columns can use a number format too, and the total row follows the column's format.
+  - **Progress bar**: cells like `60%`, `3/5` or `0.6` are drawn as a bar followed by the original text, green when full.
+  - **Multi-select tags**: comma-separated values become colored tags, colored automatically like status columns and recolorable from the right-click menu. While editing, tags not yet used in the cell are listed; press ↓ to pick one and Enter to add it, or just press Enter to finish editing.
+
 ## [0.17.5] - 2026-11-17
 
 ### Changed

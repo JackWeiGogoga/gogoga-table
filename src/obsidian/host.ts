@@ -5,6 +5,7 @@ import { type App, type Component, type HoverParent, Keymap, MarkdownRenderer, M
 import type { EditorHost, MenuItem, TableEditor } from "../editor/editor";
 import { t } from "../editor/i18n";
 import { guardEditorHotkeys } from "./keys";
+import { dailyNote } from "./daily";
 
 export interface TableSettings {
   /** 接管 Markdown 表格（关掉就完全是 Obsidian 原生表格） */
@@ -224,6 +225,7 @@ export function makeFactory(app: App, settings: () => TableSettings, persist: ()
         richEdit: () => settings().richEdit,
         formatColors: () => (settings().formatBar ? { text: FORMAT_TEXT_COLORS, highlight: FORMAT_HIGHLIGHT_COLORS } : null),
         colorMemory: () => colorMemory,
+        dailyNote: () => dailyNote(app),
         // [[ 补全：笔记按名字找（名字开头的排前面），插的是 Obsidian 生成的最短链接
         suggestLinks: (query) => {
           const q = query.toLowerCase();
