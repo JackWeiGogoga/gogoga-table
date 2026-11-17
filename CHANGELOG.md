@@ -4,6 +4,12 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.17.5] - 2026-11-17
+
+### Changed
+- Arrow keys while editing a cell (suggested on Bilibili): once the cursor is at the edge of the cell (start, end, first line or last line, counting wrapped lines), pressing the arrow key again saves the cell and moves to the next one, as in Obsidian's own tables. After typing into a cell, → or ↓ moves on straight away. In the middle of the text the arrows still move the cursor, and Shift+arrow still selects text.
+- Narrow columns (suggested on Bilibili): a column you've dragged can now be as narrow as 40px; before, every column stayed at least 80px wide even though a smaller width was saved. Columns you haven't resized still start at 80px.
+
 ## [0.17.4] - 2026-11-17
 
 ### Fixed
@@ -275,7 +281,8 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - First version: Markdown tables in Live Preview and Reading view become Notion-style tables. Click a cell to edit, Enter / Tab to move, add rows and columns, row and column handles plus a right-click menu, drag to resize columns, seven cell backgrounds, three styles and two row spacings; on mobile, tap to edit and long-press for the menu. Select a range to color, align or clear it at once; copy and paste with Excel, Feishu and the web; merge cells; drag row and column handles to reorder; sticky headers on long tables and scroll hints on wide ones. Fill handle; a per-table corner menu (style, three-line style, header column, align all, distribute or fit widths); sort by column; duplicate rows and columns and insert many at once; checkboxes; text colors; total rows; status columns; formatting keys plus [[ link and # tag completion while editing; Insert table and Convert text to table commands. Styled HTML copy. Coexists with Advanced Tables formulas and block ids. Files stay plain Markdown tables, with widths, colors, merges and more in one comment below the table.
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.4...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.5...HEAD
+[0.17.5]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.4...0.17.5
 [0.17.4]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.3...0.17.4
 [0.17.3]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.2...0.17.3
 [0.17.2]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.1...0.17.2
