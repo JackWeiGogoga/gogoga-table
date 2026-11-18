@@ -4,6 +4,9 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Fixed
+- Date columns: with "Show formatting while editing a cell" turned on, picking a day in the calendar seemed to do nothing. The date was written, but the cell immediately went back into editing with an empty box, and the next action cleared the date. The Today and Clear buttons had the same problem.
+
 ## [0.18.0] - 2026-11-17
 
 ### Added

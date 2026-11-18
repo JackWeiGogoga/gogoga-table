@@ -2441,7 +2441,8 @@ export class TableEditor {
     if (!this.editing || !this.sel) return;
     const ty = colTypeOf(this.table, this.sel.c);
     const daily = ty?.t === "date" && ty.f === "link" ? this.dailyNote() : null;
-    this.input.value = v ? writeDate(v, ty?.t === "date" ? ty.f : undefined, daily ? (x) => daily.name(x) : undefined) : "";
+    // 用 reset 换文字：直接赋值在 CodeMirror 编辑框里算一次输入，提交完它又让这格进入编辑（空的），下一下就把日期清掉了
+    this.input.reset(v ? writeDate(v, ty?.t === "date" ? ty.f : undefined, daily ? (x) => daily.name(x) : undefined) : "");
     this.commit();
     this.input.focus();
   }
