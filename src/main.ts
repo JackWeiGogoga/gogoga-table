@@ -1,4 +1,4 @@
-import { type App, getLanguage, MarkdownView, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { type App, getLanguage, MarkdownView, Plugin, PluginSettingTab, Setting, type SettingDefinitionItem } from "obsidian";
 import type { Extension } from "@codemirror/state";
 import { setLanguage, t } from "./editor/i18n";
 import { activeTableEditor, TABLE_COMMANDS } from "./editor/editor";
@@ -17,7 +17,7 @@ export default class TablePlugin extends Plugin {
   private factory: TableHostFactory | null = null;
 
   async onload(): Promise<void> {
-    setLanguage(typeof getLanguage === "function" ? getLanguage() : window.localStorage.getItem("language"));
+    setLanguage(getLanguage());
     this.settings = { ...DEFAULT_SETTINGS, ...((await this.loadData()) as Partial<TableSettings> | null) };
     const factory = makeFactory(this.app, () => this.settings, () => {
       // 连着挑颜色时攒一下再写
@@ -106,6 +106,110 @@ export default class TablePlugin extends Plugin {
   }
 }
 
+/** 设置页的一项：开关或下拉框，值存在 plugin.settings[key] 里（下拉框的值是字符串，数字设置读写时换算） */
+interface SettingSpec {
+  key: keyof TableSettings;
+  name: string;
+  desc?: string;
+  type: "toggle" | "dropdown";
+  options?: Record<string, string>;
+}
+
+/** 设置项清单：Obsidian 1.13 起交给它的声明式设置（设置里能搜到），更早的版本照这份清单自己画 */
+function settingSpecs(): SettingSpec[] {
+  const zh = getLanguage().startsWith("zh");
+  return [
+    {
+      key: "enabled",
+      name: zh ? "接管 Markdown 表格" : "Enhance Markdown tables",
+      desc: zh ? "关掉后完全恢复 Obsidian 原生表格；文件里的注释留着，不影响显示。" : "Turn off to go back to Obsidian's own tables. Comments already in your notes stay and do no harm.",
+      type: "toggle",
+    },
+    {
+      key: "preset",
+      name: zh ? "样式" : "Style",
+      type: "dropdown",
+      options: zh ? { default: "默认", zebra: "斑马纹", minimal: "极简线", academic: "三线表" } : { default: "Default", zebra: "Zebra", minimal: "Minimal", academic: "Three-line" },
+    },
+    {
+      key: "cellPadX",
+      name: zh ? "格子左右内边距" : "Cell side padding",
+      desc: zh ? "格子里文字离左右边框多远。嫌格子两边空得多可以调小；行距选「紧凑」的表格最多 8。" : "How far text sits from a cell's left and right borders. Lower it if cells feel too roomy; Compact tables use at most 8.",
+      type: "dropdown",
+      options: zh ? { "4": "4（很窄）", "6": "6", "8": "8", "10": "10（默认）" } : { "4": "4 (tight)", "6": "6", "8": "8", "10": "10 (default)" },
+    },
+    {
+      key: "density",
+      name: zh ? "行距" : "Row spacing",
+      type: "dropdown",
+      options: zh ? { comfortable: "舒适", compact: "紧凑" } : { comfortable: "Comfortable", compact: "Compact" },
+    },
+    {
+      key: "fullWidth",
+      name: zh ? "表格默认撑满页面宽度" : "Tables fill the page width",
+      desc: zh
+        ? "没拖过列宽的表格铺满正文宽度，各列按内容多少分；拖过列宽的表格还按设的宽度。只改显示，不往笔记里写东西。单张表也可以用表格左上角菜单里的「撑满页面宽度」。"
+        : "Tables whose column widths you haven't set stretch to the page width, with columns sized by their content; tables with set widths keep them. Display only — nothing is written to your notes. For a single table you can also use Fit to page width in its table menu.",
+      type: "toggle",
+    },
+    {
+      key: "strictStyle",
+      name: zh ? "表格样式优先于主题" : "Table style over theme",
+      desc: zh
+        ? "有的主题（OnePage、Minimal、Blue Topaz、Border、phycat 等）会用 !important 改表格的边框、表头底色和文字颜色，把表格插件的样式盖掉。打开后表格按插件自己的样式画（边框、表头、极简线和三线表这些样式），关掉就让主题的表格样式生效。"
+        : "Some themes (OnePage, Minimal, Blue Topaz, Border, phycat and others) restyle table borders, header backgrounds and text colors with !important, overriding this plugin. On: tables keep this plugin's look (borders, header, the Minimal and Three-line styles). Off: the theme's table style wins.",
+      type: "toggle",
+    },
+    {
+      key: "fitCols",
+      name: zh ? "列宽按比例缩放" : "Scale column widths to fit",
+      desc: zh
+        ? "拖过列宽的表格比正文宽时（比如打开了侧栏），各列按比例缩小到正好放下，不出横向滚动条；正文变宽后恢复原来的宽度。只改显示，笔记里还是原来的列宽。列太多、缩到很窄时照样横向滚动。"
+        : "When a table with set column widths is wider than the page (say, with a sidebar open), its columns shrink proportionally to fit instead of scrolling sideways, and grow back when there's room. Display only — your notes keep the original widths. Tables with too many columns still scroll.",
+      type: "toggle",
+    },
+    {
+      key: "readingReadonly",
+      name: zh ? "阅读视图里表格只读" : "Read-only tables in Reading view",
+      desc: zh
+        ? "和 Obsidian 的阅读视图一致：表格只看不改，点格子不会进入编辑，没有手柄和加号，链接照常能点。关掉后在阅读视图里也能直接改表格。"
+        : "Like the rest of Reading view: tables are view-only, clicking a cell doesn't start editing, and there are no handles or add buttons; links still work. Turn off to edit tables directly in Reading view.",
+      type: "toggle",
+    },
+    {
+      key: "crosshair",
+      name: zh ? "十字高亮" : "Crosshair highlight",
+      desc: zh ? "选中格子时，把它所在的整行和整列铺一层淡色，看大表格不容易串行。「悬停时」跟着鼠标走，鼠标离开表格后回到选中的格子。" : "Tint the whole row and column of the selected cell so large tables are easier to follow. On hover follows the mouse, falling back to the selected cell when the mouse leaves the table.",
+      type: "dropdown",
+      options: zh ? { off: "关", select: "选中格子时", hover: "选中和悬停时" } : { off: "Off", select: "On the selected cell", hover: "On selected and hovered cells" },
+    },
+    {
+      key: "richEdit",
+      name: zh ? "编辑格子时直接显示格式" : "Show formatting while editing a cell",
+      desc: zh
+        ? "编辑格子时，加粗、斜体、文字颜色、荧光笔、下划线直接显示效果，<span style=…> 这类标签藏起来，删字时标签保持成对，和 gogoga Mind Map 的节点编辑一样。关掉时显示原始的 Markdown 和 HTML。"
+        : "While editing a cell, bold, italic, text colors, highlighter colors and underline show as formatted, with tags like <span style=…> hidden and kept paired when you delete text, as in gogoga Mind Map's node editor. When off, the raw Markdown and HTML are shown.",
+      type: "toggle",
+    },
+    {
+      key: "formatBar",
+      name: zh ? "编辑格子时选中文字显示格式栏" : "Format bar when selecting text in a cell",
+      desc: zh
+        ? "编辑格子时选中一段文字，上方浮出一排按钮：加粗、斜体、删除线、下划线、高亮、文字颜色、荧光笔和清除，和 gogoga Mind Map 的格式栏一样。不打开也能用快捷键：⌘B、⌘I、⌘U、⌘⇧X、⌘⇧H。"
+        : "While editing a cell, selecting text shows a bar above it: bold, italic, strikethrough, underline, highlight, text colors, highlighter colors and clear, the same as in gogoga Mind Map. Without it, use the shortcuts: Mod+B, Mod+I, Mod+U, Mod+Shift+X, Mod+Shift+H.",
+      type: "toggle",
+    },
+    {
+      key: "smartDate",
+      name: zh ? "日期列自动识别日期写法" : "Recognize dates typed in date columns",
+      desc: zh
+        ? "在日期列里打 1/5、11-17、2026年1月5日、20260105、今天、明天、昨天，按 Enter 后换成这一列的写法（比如 2026-01-05，或日记链接 [[2026-01-05]]）；没写年的算今年。关掉时只统一 2026-1-5 这种写法，别的原样保存。"
+        : "In date columns, typing 1/5, 11-17, 2026年1月5日, 20260105, today, tomorrow or yesterday becomes the column's date style when you press Enter (such as 2026-01-05, or a daily note link [[2026-01-05]]). Dates without a year use the current year. When off, only dates like 2026-1-5 are tidied and everything else is kept as typed.",
+      type: "toggle",
+    },
+  ];
+}
+
 class TableSettingTab extends PluginSettingTab {
   constructor(
     app: App,
@@ -114,156 +218,35 @@ class TableSettingTab extends PluginSettingTab {
     super(app, plugin);
   }
 
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    return settingSpecs().map((x) => ({
+      name: x.name,
+      desc: x.desc,
+      control: x.type === "toggle" ? { type: "toggle", key: x.key } : { type: "dropdown", key: x.key, options: x.options ?? {} },
+    }));
+  }
+
+  getControlValue(key: string): unknown {
+    const v = this.plugin.settings[key as keyof TableSettings];
+    return typeof v === "number" ? String(v) : v;
+  }
+
+  async setControlValue(key: string, value: unknown): Promise<void> {
+    const k = key as keyof TableSettings;
+    const s = this.plugin.settings as unknown as Record<string, unknown>;
+    s[k] = typeof DEFAULT_SETTINGS[k] === "number" ? Number(value) : value;
+    await this.plugin.saveSettings();
+  }
+
+  /** Obsidian 1.13 以前没有声明式设置：照同一份清单画 */
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    const zh = getLanguage?.().startsWith("zh");
-    const s = this.plugin.settings;
-    new Setting(containerEl)
-      .setName(zh ? "接管 Markdown 表格" : "Enhance Markdown tables")
-      .setDesc(zh ? "关掉后完全恢复 Obsidian 原生表格；文件里的注释留着，不影响显示。" : "Turn off to go back to Obsidian's own tables. Comments already in your notes stay and do no harm.")
-      .addToggle((tg) =>
-        tg.setValue(s.enabled).onChange(async (v) => {
-          s.enabled = v;
-          await this.plugin.saveSettings();
-        }),
-      );
-    new Setting(containerEl)
-      .setName(zh ? "样式" : "Style")
-      .addDropdown((dd) =>
-        dd
-          .addOptions(zh ? { default: "默认", zebra: "斑马纹", minimal: "极简线", academic: "三线表" } : { default: "Default", zebra: "Zebra", minimal: "Minimal", academic: "Three-line" })
-          .setValue(s.preset)
-          .onChange(async (v) => {
-            s.preset = v as TableSettings["preset"];
-            await this.plugin.saveSettings();
-          }),
-      );
-    new Setting(containerEl)
-      .setName(zh ? "格子左右内边距" : "Cell side padding")
-      .setDesc(zh ? "格子里文字离左右边框多远。嫌格子两边空得多可以调小；行距选「紧凑」的表格最多 8。" : "How far text sits from a cell's left and right borders. Lower it if cells feel too roomy; Compact tables use at most 8.")
-      .addDropdown((dd) =>
-        dd
-          .addOptions(zh ? { "4": "4（很窄）", "6": "6", "8": "8", "10": "10（默认）" } : { "4": "4 (tight)", "6": "6", "8": "8", "10": "10 (default)" })
-          .setValue(String(s.cellPadX))
-          .onChange(async (v) => {
-            s.cellPadX = Number(v);
-            await this.plugin.saveSettings();
-          }),
-      );
-    new Setting(containerEl)
-      .setName(zh ? "行距" : "Row spacing")
-      .addDropdown((dd) =>
-        dd
-          .addOptions(zh ? { comfortable: "舒适", compact: "紧凑" } : { comfortable: "Comfortable", compact: "Compact" })
-          .setValue(s.density)
-          .onChange(async (v) => {
-            s.density = v as TableSettings["density"];
-            await this.plugin.saveSettings();
-          }),
-      );
-    new Setting(containerEl)
-      .setName(zh ? "表格默认撑满页面宽度" : "Tables fill the page width")
-      .setDesc(
-        zh
-          ? "没拖过列宽的表格铺满正文宽度，各列按内容多少分；拖过列宽的表格还按设的宽度。只改显示，不往笔记里写东西。单张表也可以用表格左上角菜单里的「撑满页面宽度」。"
-          : "Tables whose column widths you haven't set stretch to the page width, with columns sized by their content; tables with set widths keep them. Display only — nothing is written to your notes. For a single table you can also use Fit to page width in its table menu.",
-      )
-      .addToggle((tg) =>
-        tg.setValue(s.fullWidth).onChange(async (v) => {
-          s.fullWidth = v;
-          await this.plugin.saveSettings();
-        }),
-      );
-    new Setting(containerEl)
-      .setName(zh ? "表格样式优先于主题" : "Table style over theme")
-      .setDesc(
-        zh
-          ? "有的主题（OnePage、Minimal、Blue Topaz、Border、phycat 等）会用 !important 改表格的边框、表头底色和文字颜色，把表格插件的样式盖掉。打开后表格按插件自己的样式画（边框、表头、极简线和三线表这些样式），关掉就让主题的表格样式生效。"
-          : "Some themes (OnePage, Minimal, Blue Topaz, Border, phycat and others) restyle table borders, header backgrounds and text colors with !important, overriding this plugin. On: tables keep this plugin's look (borders, header, the Minimal and Three-line styles). Off: the theme's table style wins.",
-      )
-      .addToggle((tg) =>
-        tg.setValue(s.strictStyle).onChange(async (v) => {
-          s.strictStyle = v;
-          await this.plugin.saveSettings();
-        }),
-      );
-    new Setting(containerEl)
-      .setName(zh ? "列宽按比例缩放" : "Scale column widths to fit")
-      .setDesc(
-        zh
-          ? "拖过列宽的表格比正文宽时（比如打开了侧栏），各列按比例缩小到正好放下，不出横向滚动条；正文变宽后恢复原来的宽度。只改显示，笔记里还是原来的列宽。列太多、缩到很窄时照样横向滚动。"
-          : "When a table with set column widths is wider than the page (say, with a sidebar open), its columns shrink proportionally to fit instead of scrolling sideways, and grow back when there's room. Display only — your notes keep the original widths. Tables with too many columns still scroll.",
-      )
-      .addToggle((tg) =>
-        tg.setValue(s.fitCols).onChange(async (v) => {
-          s.fitCols = v;
-          await this.plugin.saveSettings();
-        }),
-      );
-    new Setting(containerEl)
-      .setName(zh ? "阅读视图里表格只读" : "Read-only tables in Reading view")
-      .setDesc(
-        zh
-          ? "和 Obsidian 的阅读视图一致：表格只看不改，点格子不会进入编辑，没有手柄和加号，链接照常能点。关掉后在阅读视图里也能直接改表格。"
-          : "Like the rest of Reading view: tables are view-only, clicking a cell doesn't start editing, and there are no handles or add buttons; links still work. Turn off to edit tables directly in Reading view.",
-      )
-      .addToggle((tg) =>
-        tg.setValue(s.readingReadonly).onChange(async (v) => {
-          s.readingReadonly = v;
-          await this.plugin.saveSettings();
-        }),
-      );
-    new Setting(containerEl)
-      .setName(zh ? "十字高亮" : "Crosshair highlight")
-      .setDesc(zh ? "选中格子时，把它所在的整行和整列铺一层淡色，看大表格不容易串行。「悬停时」跟着鼠标走，鼠标离开表格后回到选中的格子。" : "Tint the whole row and column of the selected cell so large tables are easier to follow. On hover follows the mouse, falling back to the selected cell when the mouse leaves the table.")
-      .addDropdown((dd) =>
-        dd
-          .addOptions(zh ? { off: "关", select: "选中格子时", hover: "选中和悬停时" } : { off: "Off", select: "On the selected cell", hover: "On selected and hovered cells" })
-          .setValue(s.crosshair)
-          .onChange(async (v) => {
-            s.crosshair = v as TableSettings["crosshair"];
-            await this.plugin.saveSettings();
-          }),
-      );
-    new Setting(containerEl)
-      .setName(zh ? "编辑格子时直接显示格式" : "Show formatting while editing a cell")
-      .setDesc(
-        zh
-          ? "编辑格子时，加粗、斜体、文字颜色、荧光笔、下划线直接显示效果，<span style=…> 这类标签藏起来，删字时标签保持成对，和 gogoga Mind Map 的节点编辑一样。关掉时显示原始的 Markdown 和 HTML。"
-          : "While editing a cell, bold, italic, text colors, highlighter colors and underline show as formatted, with tags like <span style=…> hidden and kept paired when you delete text, as in gogoga Mind Map's node editor. When off, the raw Markdown and HTML are shown.",
-      )
-      .addToggle((tg) =>
-        tg.setValue(s.richEdit).onChange(async (v) => {
-          s.richEdit = v;
-          await this.plugin.saveSettings();
-        }),
-      );
-    new Setting(containerEl)
-      .setName(zh ? "编辑格子时选中文字显示格式栏" : "Format bar when selecting text in a cell")
-      .setDesc(
-        zh
-          ? "编辑格子时选中一段文字，上方浮出一排按钮：加粗、斜体、删除线、下划线、高亮、文字颜色、荧光笔和清除，和 gogoga Mind Map 的格式栏一样。不打开也能用快捷键：⌘B、⌘I、⌘U、⌘⇧X、⌘⇧H。"
-          : "While editing a cell, selecting text shows a bar above it: bold, italic, strikethrough, underline, highlight, text colors, highlighter colors and clear, the same as in gogoga Mind Map. Without it, use the shortcuts: Mod+B, Mod+I, Mod+U, Mod+Shift+X, Mod+Shift+H.",
-      )
-      .addToggle((tg) =>
-        tg.setValue(s.formatBar).onChange(async (v) => {
-          s.formatBar = v;
-          await this.plugin.saveSettings();
-        }),
-      );
-    new Setting(containerEl)
-      .setName(zh ? "日期列自动识别日期写法" : "Recognize dates typed in date columns")
-      .setDesc(
-        zh
-          ? "在日期列里打 1/5、11-17、2026年1月5日、20260105、今天、明天、昨天，按 Enter 后换成这一列的写法（比如 2026-01-05，或日记链接 [[2026-01-05]]）；没写年的算今年。关掉时只统一 2026-1-5 这种写法，别的原样保存。"
-          : "In date columns, typing 1/5, 11-17, 2026年1月5日, 20260105, today, tomorrow or yesterday becomes the column's date style when you press Enter (such as 2026-01-05, or a daily note link [[2026-01-05]]). Dates without a year use the current year. When off, only dates like 2026-1-5 are tidied and everything else is kept as typed.",
-      )
-      .addToggle((tg) =>
-        tg.setValue(s.smartDate).onChange(async (v) => {
-          s.smartDate = v;
-          await this.plugin.saveSettings();
-        }),
-      );
+    for (const x of settingSpecs()) {
+      const row = new Setting(containerEl).setName(x.name);
+      if (x.desc) row.setDesc(x.desc);
+      if (x.type === "toggle") row.addToggle((tg) => tg.setValue(this.getControlValue(x.key) as boolean).onChange((v) => this.setControlValue(x.key, v)));
+      else row.addDropdown((dd) => dd.addOptions(x.options ?? {}).setValue(this.getControlValue(x.key) as string).onChange((v) => this.setControlValue(x.key, v)));
+    }
   }
 }

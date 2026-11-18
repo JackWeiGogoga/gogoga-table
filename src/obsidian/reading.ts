@@ -219,8 +219,14 @@ function fitWidths(root: HTMLElement): void {
   });
   const total = widths.reduce((a, b) => a + b, 0);
   if (!total || widths.some((w) => !w)) return;
-  cols.forEach((col, c) => col.setCssStyles({ width: `${((widths[c] / total) * 100).toFixed(3)}%` }));
-  tableEl.setCssStyles({ tableLayout: "fixed", width: `min(100%, ${Math.ceil(total)}px)` });
+  applyFit(tableEl, cols, widths, total);
+}
+
+/** 各列按比例的宽度、表格总宽写成 CSS 变量，加 ggt-fitted 类：样式里换成固定布局，表格宽度取总宽和页面宽里小的（styles.css） */
+function applyFit(tableEl: HTMLElement, cols: HTMLElement[], widths: number[], total: number): void {
+  cols.forEach((col, c) => col.setCssProps({ "--ggt-fit-col": `${((widths[c] / total) * 100).toFixed(3)}%` }));
+  tableEl.setCssProps({ "--ggt-fit-w": `${Math.ceil(total)}px` });
+  tableEl.addClass("ggt-fitted");
 }
 
 const squash = (s: string) => s.replace(/\s+/g, "");
@@ -269,8 +275,7 @@ function fitStoredWidths(root: HTMLElement, stored: (number | null)[]): void {
   const avg = set.reduce((a, b) => a + b, 0) / set.length;
   const widths = cols.map((_, c) => stored[c] || avg);
   const total = widths.reduce((a, b) => a + b, 0);
-  cols.forEach((col, c) => col.setCssStyles({ width: `${((widths[c] / total) * 100).toFixed(3)}%` }));
-  tableEl.setCssStyles({ tableLayout: "fixed", width: `min(100%, ${Math.ceil(total)}px)` });
+  applyFit(tableEl, cols, widths, total);
 }
 
 export function readingProcessor(app: App, factory: TableHostFactory) {

@@ -4,6 +4,15 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.19.2] - 2026-11-18
+
+### Changed
+- On Obsidian 1.13 and later, this plugin's settings show up in the search box of Obsidian's settings (for example, searching "three-line" finds the Style setting). The settings page looks the same as before, and earlier Obsidian versions keep the old page.
+- Small code updates suggested by the Obsidian plugin review: the interface language comes from Obsidian's language API, and input method detection no longer relies on the deprecated `keyCode`. Nothing works differently.
+
+### Fixed
+- Copy image on a web image in a cell could fail for images from sites that don't allow cross-origin access. It now downloads the image through Obsidian, so any image shown in the cell can be copied.
+
 ## [0.19.1] - 2026-11-18
 
 ### Changed
@@ -307,7 +316,8 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - First version: Markdown tables in Live Preview and Reading view become Notion-style tables. Click a cell to edit, Enter / Tab to move, add rows and columns, row and column handles plus a right-click menu, drag to resize columns, seven cell backgrounds, three styles and two row spacings; on mobile, tap to edit and long-press for the menu. Select a range to color, align or clear it at once; copy and paste with Excel, Feishu and the web; merge cells; drag row and column handles to reorder; sticky headers on long tables and scroll hints on wide ones. Fill handle; a per-table corner menu (style, three-line style, header column, align all, distribute or fit widths); sort by column; duplicate rows and columns and insert many at once; checkboxes; text colors; total rows; status columns; formatting keys plus [[ link and # tag completion while editing; Insert table and Convert text to table commands. Styled HTML copy. Coexists with Advanced Tables formulas and block ids. Files stay plain Markdown tables, with widths, colors, merges and more in one comment below the table.
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.19.1...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.19.2...HEAD
+[0.19.2]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.19.1...0.19.2
 [0.19.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.19.0...0.19.1
 [0.19.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.18.0...0.19.0
 [0.18.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.5...0.18.0

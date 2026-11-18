@@ -1,7 +1,7 @@
 /** 实时预览、阅读视图共用：用 Obsidian 的能力（Markdown 渲染、图标、设置）拼出编辑器的宿主 */
 
 import { type ColorMemory, pushRecent } from "../core/color-palette";
-import { type App, type Component, type HoverParent, Keymap, MarkdownRenderer, Menu, Notice, setIcon } from "obsidian";
+import { type App, type Component, type HoverParent, Keymap, MarkdownRenderer, Menu, Notice, requestUrl, setIcon, type TFile } from "obsidian";
 import type { EditorHost, MenuItem, TableEditor } from "../editor/editor";
 import { t } from "../editor/i18n";
 import { guardEditorHotkeys } from "./keys";
@@ -93,19 +93,34 @@ function foreignMenuItems(menu: Menu): MenuItem[] {
 }
 
 /** 把格子里显示的图片复制到剪贴板（转成 PNG，剪贴板只认这个） */
-async function copyImage(img: HTMLImageElement): Promise<boolean> {
+async function copyImage(app: App, img: HTMLImageElement, file: TFile | null): Promise<boolean> {
   try {
     const doc = img.ownerDocument;
     const win = doc.defaultView ?? window;
-    const blob = await (await fetch(img.currentSrc || img.src)).blob();
-    let png = blob;
-    if (blob.type !== "image/png") {
-      const bmp = await win.createImageBitmap(blob);
+    const src = img.currentSrc || img.src;
+    const toPng = (source: CanvasImageSource, w: number, h: number) => {
       const canvas = doc.createElement("canvas");
-      canvas.width = bmp.width;
-      canvas.height = bmp.height;
-      canvas.getContext("2d")?.drawImage(bmp, 0, 0);
-      png = await new Promise<Blob>((ok, fail) => canvas.toBlob((b) => (b ? ok(b) : fail(new Error("toBlob"))), "image/png"));
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d")?.drawImage(source, 0, 0);
+      return new Promise<Blob>((ok, fail) => canvas.toBlob((b) => (b ? ok(b) : fail(new Error("toBlob"))), "image/png"));
+    };
+    // 原图：库里的图片按文件读，网络图片用 Obsidian 的 requestUrl 取（不受跨域限制）；
+    // 都不是（data: 这类）的直接画页面上那张（页面上画出来的 app:// 和跨域图片会被当成跨域，转不成 PNG，所以前两种不走这条）
+    let blob: Blob | null = null;
+    if (file) blob = new Blob([await app.vault.readBinary(file)], { type: file.extension.toLowerCase() === "png" ? "image/png" : "" });
+    else if (/^https?:/i.test(src)) {
+      const res = await requestUrl({ url: src });
+      blob = new Blob([res.arrayBuffer], { type: res.headers["content-type"] ?? "" });
+    }
+    let png: Blob;
+    if (blob?.type === "image/png") png = blob;
+    else if (blob) {
+      const bmp = await win.createImageBitmap(blob);
+      png = await toPng(bmp, bmp.width, bmp.height);
+    } else {
+      await img.decode();
+      png = await toPng(img, img.naturalWidth, img.naturalHeight);
     }
     await win.navigator.clipboard.write([new win.ClipboardItem({ "image/png": png })]);
     return true;
@@ -181,14 +196,14 @@ export function makeFactory(app: App, settings: () => TableSettings, persist: ()
         imageMenu: (ev, img, link, remove) => {
           const menu = Menu.forEvent(ev);
           keepMenu(menu);
+          const file = link ? app.metadataCache.getFirstLinkpathDest(link, sourcePath) : null;
           menu.addItem((item) =>
             item
               .setSection("action")
               .setTitle(t("copyImage"))
               .setIcon("copy")
-              .onClick(() => void copyImage(img).then((ok) => ok && new Notice(t("copiedImage")))),
+              .onClick(() => void copyImage(app, img, file).then((ok) => ok && new Notice(t("copiedImage")))),
           );
-          const file = link ? app.metadataCache.getFirstLinkpathDest(link, sourcePath) : null;
           if (link && file) linkContextMenu(app, menu, link, sourcePath);
           if (file && remove)
             menu.addItem((item) =>
