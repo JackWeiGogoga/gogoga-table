@@ -4,6 +4,15 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-18
+
+### Added
+- Date columns understand more ways of typing a date: `1/5`, `11-17`, `1月5日`, `2026年1月5日`, `20260105`, `today`, `tomorrow`, `yesterday` (and 今天, 明天, 昨天) become the column's date style when you press Enter. Dates without a year use the current year. In a column set to daily note links, typed dates also become `[[2026-01-05]]`, so you no longer have to pick them from the calendar. Only cells you typed in are changed, so a "today" saved earlier is never silently turned into a date later. Turn this off with "Recognize dates typed in date columns" in settings (on by default); when off, only dates like `2026-1-5` are tidied, as before.
+- Cells in a date column that aren't a date (such as `TBD` or a day that doesn't exist like `2026-02-30`) are kept as typed but get a faint wavy underline, with a tooltip saying they aren't treated as a date. This is display only; the file isn't changed.
+
+### Changed
+- Sorting a date column orders by the actual day, including `2026年1月5日` and daily note links. Cells that aren't dates come after the dates and empty cells come last, in both ascending and descending order, instead of being mixed in with the dates.
+
 ### Fixed
 - Date columns: with "Show formatting while editing a cell" turned on, picking a day in the calendar seemed to do nothing. The date was written, but the cell immediately went back into editing with an empty box, and the next action cleared the date. The Today and Clear buttons had the same problem.
 
@@ -293,7 +302,8 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - First version: Markdown tables in Live Preview and Reading view become Notion-style tables. Click a cell to edit, Enter / Tab to move, add rows and columns, row and column handles plus a right-click menu, drag to resize columns, seven cell backgrounds, three styles and two row spacings; on mobile, tap to edit and long-press for the menu. Select a range to color, align or clear it at once; copy and paste with Excel, Feishu and the web; merge cells; drag row and column handles to reorder; sticky headers on long tables and scroll hints on wide ones. Fill handle; a per-table corner menu (style, three-line style, header column, align all, distribute or fit widths); sort by column; duplicate rows and columns and insert many at once; checkboxes; text colors; total rows; status columns; formatting keys plus [[ link and # tag completion while editing; Insert table and Convert text to table commands. Styled HTML copy. Coexists with Advanced Tables formulas and block ids. Files stay plain Markdown tables, with widths, colors, merges and more in one comment below the table.
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.18.0...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.19.0...HEAD
+[0.19.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.18.0...0.19.0
 [0.18.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.5...0.18.0
 [0.17.5]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.4...0.17.5
 [0.17.4]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.17.3...0.17.4
