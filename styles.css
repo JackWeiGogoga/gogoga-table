@@ -665,8 +665,9 @@
 .ggt .ggt-input-cm .ggt-ed-mark[data-highlight="purple"] { background: var(--highlight-background-purple, rgba(var(--color-purple-rgb, 120, 82, 238), 0.3)); }
 
 /* 阅读视图：Obsidian 给表格套的 .el-table 会横向滚动、裁掉超出的部分，骑在表格左边线上的行手柄、左上角按钮会被切掉半边。
-   接管了的表格横向滚动由 .ggt-scroll 自己负责，这一层不用滚动（这样长表格在阅读视图里也能用原生吸顶）。Obsidian 在它上面写了内联的 overflow-x: auto，要 !important 才盖得住 */
-.markdown-rendered .el-table:has(> .ggt-reading) { overflow: visible !important; }
+   接管了的表格横向滚动由 .ggt-scroll 自己负责，这一层不用滚动（这样长表格在阅读视图里也能用原生吸顶）。Obsidian 在它上面写了内联的 overflow-x: auto，要 !important 才盖得住。
+   ggt-el-table 是接管表格时加在这一层上的类（reading.ts） */
+.markdown-rendered .el-table.ggt-el-table { overflow: visible !important; }
 
 /* 双击格子里的图片看大图 */
 .ggt-lightbox {

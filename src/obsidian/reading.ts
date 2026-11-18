@@ -19,12 +19,25 @@ class TableChild extends MarkdownRenderChild {
   original: HTMLElement | null = null;
   /** 列表项那一段被拆成了「前半段、表格、后半段」：卸载时这几块一起换回原来的一段 */
   extra: HTMLElement[] = [];
+  /** 包着表格的 .el-table：接管期间加 ggt-el-table（样式里放开它的横向滚动，见 styles.css），卸载时去掉 */
+  wrap: HTMLElement | null = null;
   onunload(): void {
     this.editor?.destroy();
-    if (!this.original) return;
-    for (const e of this.extra) e.remove();
-    this.containerEl.replaceWith(this.original);
+    if (this.original) {
+      for (const e of this.extra) e.remove();
+      this.containerEl.replaceWith(this.original);
+    }
+    // 重新渲染时新表格先放进同一层、旧的后卸载：这层里还有接管的表格就留着类名
+    if (this.wrap && !this.wrap.querySelector(":scope > .ggt-reading")) this.wrap.removeClass("ggt-el-table");
   }
+}
+
+/** 表格直接放在 Obsidian 的 .el-table 里时给这层加 ggt-el-table（样式里放开它的横向滚动），卸载时去掉 */
+function markWrap(child: TableChild, holder: HTMLElement): void {
+  const wrap = holder.parentElement;
+  if (!wrap?.hasClass("el-table")) return;
+  wrap.addClass("ggt-el-table");
+  child.wrap = wrap;
 }
 
 /**
@@ -164,6 +177,7 @@ async function exportProcessor(
     tableEl.replaceWith(holder);
     const child = new TableChild(holder);
     child.original = tableEl;
+    markWrap(child, holder);
     ctx.addChild(child);
     const host = factory.host(ctx.sourcePath, child, { onChange: () => {}, readonly: true });
     if (host.renderMarkdown) {
@@ -313,6 +327,7 @@ export function readingProcessor(app: App, factory: TableHostFactory) {
       if (!original) continue;
       const child = new TableChild(holder);
       child.original = original;
+      markWrap(child, holder);
       child.extra = (holder as HTMLElement & { ggtSplit?: HTMLElement[] }).ggtSplit ?? [];
       ctx.addChild(child);
       const editor = new TableEditor(holder, table, factory.host(ctx.sourcePath, child, {
