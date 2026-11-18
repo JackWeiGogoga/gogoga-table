@@ -18,6 +18,8 @@ export interface TableSettings {
   formatBar: boolean;
   /** 编辑格子时直接显示格式（加粗、颜色、荧光笔），标签藏起来；默认关 */
   richEdit: boolean;
+  /** 日期列手打的 1/5、2026年1月5日、20260105、今天，提交时换成这一列的写法（默认开） */
+  smartDate: boolean;
   /** 阅读视图里表格只读（默认开）：关掉才能在阅读视图里直接改表格 */
   readingReadonly: boolean;
   /** 没设过列宽的表格撑满页面宽度（默认关）：只改显示，不往文件里写列宽 */
@@ -43,6 +45,7 @@ export const DEFAULT_SETTINGS: TableSettings = {
   crosshair: "off",
   formatBar: false,
   richEdit: false,
+  smartDate: true,
   readingReadonly: true,
   fullWidth: false,
   fitCols: true,
@@ -223,6 +226,7 @@ export function makeFactory(app: App, settings: () => TableSettings, persist: ()
           }
         },
         richEdit: () => settings().richEdit,
+        smartDate: () => settings().smartDate,
         formatColors: () => (settings().formatBar ? { text: FORMAT_TEXT_COLORS, highlight: FORMAT_HIGHLIGHT_COLORS } : null),
         colorMemory: () => colorMemory,
         dailyNote: () => dailyNote(app),

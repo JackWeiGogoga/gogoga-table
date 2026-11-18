@@ -252,5 +252,18 @@ class TableSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }),
       );
+    new Setting(containerEl)
+      .setName(zh ? "日期列自动识别日期写法" : "Recognize dates typed in date columns")
+      .setDesc(
+        zh
+          ? "在日期列里打 1/5、11-17、2026年1月5日、20260105、今天、明天、昨天，按 Enter 后换成这一列的写法（比如 2026-01-05，或日记链接 [[2026-01-05]]）；没写年的算今年。关掉时只统一 2026-1-5 这种写法，别的原样保存。"
+          : "In date columns, typing 1/5, 11-17, 2026年1月5日, 20260105, today, tomorrow or yesterday becomes the column's date style when you press Enter (such as 2026-01-05, or a daily note link [[2026-01-05]]). Dates without a year use the current year. When off, only dates like 2026-1-5 are tidied and everything else is kept as typed.",
+      )
+      .addToggle((tg) =>
+        tg.setValue(s.smartDate).onChange(async (v) => {
+          s.smartDate = v;
+          await this.plugin.saveSettings();
+        }),
+      );
   }
 }
