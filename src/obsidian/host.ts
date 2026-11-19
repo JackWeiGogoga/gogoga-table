@@ -245,7 +245,10 @@ export function makeFactory(app: App, settings: () => TableSettings, persist: ()
         },
         richEdit: () => settings().richEdit,
         smartDate: () => settings().smartDate,
-        formatColors: () => (settings().formatBar ? { text: FORMAT_TEXT_COLORS, highlight: FORMAT_HIGHLIGHT_COLORS } : null),
+        // 设置「编辑格子时选中文字显示格式栏」打开才出；在 gogoga Mind Map 的备注编辑框里不看设置，一直出：
+        // 那里正文选中文字一直有格式栏，表格里没有就像是坏了（群友反馈「备注表格里的高亮还是不行」）
+        formatColors: (root) =>
+          settings().formatBar || root?.closest(".mm-note-live") ? { text: FORMAT_TEXT_COLORS, highlight: FORMAT_HIGHLIGHT_COLORS } : null,
         colorMemory: () => colorMemory,
         dailyNote: () => dailyNote(app),
         // [[ 补全：笔记按名字找（名字开头的排前面），插的是 Obsidian 生成的最短链接

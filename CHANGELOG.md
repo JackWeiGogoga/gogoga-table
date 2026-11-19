@@ -4,6 +4,11 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.22.1] - 2026-11-19
+
+### Fixed
+- In the note editor of gogoga Mind Map, selecting text in a table cell didn't show the format bar unless "Format bar when selecting text in a cell" was on (reported by a user: highlighting worked in the note's text but not in its tables). There it now always shows, like the format bar for the rest of the note. Elsewhere the setting works as before.
+
 ## [0.22.0] - 2026-11-19
 
 ### Added
@@ -342,7 +347,8 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - First version: Markdown tables in Live Preview and Reading view become Notion-style tables. Click a cell to edit, Enter / Tab to move, add rows and columns, row and column handles plus a right-click menu, drag to resize columns, seven cell backgrounds, three styles and two row spacings; on mobile, tap to edit and long-press for the menu. Select a range to color, align or clear it at once; copy and paste with Excel, Feishu and the web; merge cells; drag row and column handles to reorder; sticky headers on long tables and scroll hints on wide ones. Fill handle; a per-table corner menu (style, three-line style, header column, align all, distribute or fit widths); sort by column; duplicate rows and columns and insert many at once; checkboxes; text colors; total rows; status columns; formatting keys plus [[ link and # tag completion while editing; Insert table and Convert text to table commands. Styled HTML copy. Coexists with Advanced Tables formulas and block ids. Files stay plain Markdown tables, with widths, colors, merges and more in one comment below the table.
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.22.0...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.22.1...HEAD
+[0.22.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.22.0...0.22.1
 [0.22.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.21.0...0.22.0
 [0.21.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.20.0...0.21.0
 [0.20.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.19.3...0.20.0
