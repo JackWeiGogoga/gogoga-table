@@ -153,6 +153,14 @@ function settingSpecs(): SettingSpec[] {
       type: "toggle",
     },
     {
+      key: "center",
+      name: zh ? "表格居中" : "Center tables",
+      desc: zh
+        ? "比正文窄的表格放在页面正中间（阅读视图和实时预览都是），默认靠左。比正文还宽、要左右滑动的表格和撑满页面宽度的表格照旧。只改显示，不往笔记里写东西。"
+        : "Tables narrower than the page sit in the middle of it, in Reading view and Live Preview, instead of on the left. Tables wider than the page (which scroll sideways) and tables that fill the page width stay as they are. Display only — nothing is written to your notes.",
+      type: "toggle",
+    },
+    {
       key: "strictStyle",
       name: zh ? "表格样式优先于主题" : "Table style over theme",
       desc: zh

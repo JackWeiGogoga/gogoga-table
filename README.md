@@ -64,6 +64,7 @@ It works as soon as it's on: Markdown tables in Live Preview and Reading view be
 - **Cell side padding**: how far text sits from a cell's left and right borders: 4, 6, 8 or 10 (default 10); Compact tables use at most 8.
 - **Row spacing**: Comfortable, Compact.
 - **Tables fill the page width** (off by default): tables whose column widths you haven't set stretch to the page width; display only.
+- **Center tables** (off by default): tables narrower than the page sit in the middle of it, in Reading view and Live Preview. Wider tables (which scroll sideways) and tables that fill the page width stay as they are; display only.
 - **Table style over theme** (on by default): themes like OnePage, Minimal, Blue Topaz, Border and phycat restyle table borders, header backgrounds and text colors with !important; on, tables keep this plugin's look, off, the theme's table style wins.
 - **Scale column widths to fit** (on by default): when a table with set column widths is wider than the page (say, with a sidebar open), its columns shrink proportionally to fit and grow back when there's room; display only, your notes keep the original widths.
 - **Read-only tables in Reading view** (on by default): tables are view-only in Reading view, like the rest of it; turn off to edit tables there too.

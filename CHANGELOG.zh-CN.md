@@ -4,6 +4,11 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-11-19
+
+### 新增
+- 设置「表格居中」（默认关，群友提议）：比正文窄的表格放在页面正中间，阅读视图和实时预览都是。比正文宽的表格照旧左边和正文对齐、左右滑动，撑满页面宽度的表格不变。以前用 CSS 片段给 `table` 设 `margin: auto` 来居中，装了插件就不管用：插件的每张表外面包着一层和表格一样宽、靠左放的外框，这个设置排的是外框。
+
 ## [0.21.0] - 2026-11-19
 
 ### 新增
@@ -337,7 +342,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 ### 新增
 - 第一个版本：实时预览和阅读视图里的 Markdown 表格换成 Notion 风格的表格。点格子编辑，Enter / Tab 跳格，加行加列，行列手柄和右键菜单，拖列宽，七种底色，三套样式和两档行距；手机上点一下编辑、长按出菜单。选一片格子一起设底色、对齐、清空；和 Excel、飞书、网页互相复制粘贴；合并单元格；拖动行列手柄调整顺序；长表格表头吸顶，宽表格左右有滚动提示。下拉填充；表格左上角菜单（单表样式、三线表、标题列、整表对齐、平均分布列宽、撑满页面）；按列排序；复制行列、一次插入多行；勾选框；文字颜色；合计行；状态列；编辑格子时的格式快捷键和 [[ 链接、# 标签补全；插入表格、文字转表格等命令。复制带样式的 HTML。兼容 Advanced Tables 的公式注释和块标识。文件仍是标准 Markdown 表格，列宽、颜色、合并等存在表格下面的一行注释里。
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.21.0...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.22.0...HEAD
+[0.22.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.21.0...0.22.0
 [0.21.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.20.0...0.21.0
 [0.20.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.19.3...0.20.0
 [0.19.3]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.19.2...0.19.3
