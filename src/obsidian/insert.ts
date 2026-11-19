@@ -38,18 +38,40 @@ export class GridModal extends Modal {
     const grid = this.contentEl.createDiv({ cls: "ggt-grid" });
     const hint = this.contentEl.createDiv({ cls: "ggt-grid-hint" });
     const cells: HTMLElement[][] = [];
+    // 现在高亮的大小（从 0 数）：鼠标悬停、方向键都改它，回车按它插入
+    let cur = { r: 2, c: 2 };
     const mark = (r: number, c: number) => {
+      cur = { r, c };
       cells.forEach((row, i) => row.forEach((el, j) => el.toggleClass("is-on", i <= r && j <= c)));
       hint.setText(t("gridHint").replace("{r}", String(r + 1)).replace("{c}", String(c + 1)));
     };
+    const insert = () => {
+      this.close();
+      this.pick(Math.max(2, cur.r + 1), cur.c + 1);
+    };
+    // 键盘：回车插入高亮的大小（群友反馈），方向键改行数、列数
+    this.scope.register([], "Enter", (ev) => {
+      ev.preventDefault();
+      insert();
+      return false;
+    });
+    const step = (dr: number, dc: number) => (ev: KeyboardEvent) => {
+      ev.preventDefault();
+      mark(Math.min(MAX_R - 1, Math.max(1, cur.r + dr)), Math.min(MAX_C - 1, Math.max(0, cur.c + dc)));
+      return false;
+    };
+    this.scope.register([], "ArrowUp", step(-1, 0));
+    this.scope.register([], "ArrowDown", step(1, 0));
+    this.scope.register([], "ArrowLeft", step(0, -1));
+    this.scope.register([], "ArrowRight", step(0, 1));
     for (let r = 0; r < MAX_R; r++) {
       const row: HTMLElement[] = [];
       for (let c = 0; c < MAX_C; c++) {
         const el = grid.createDiv({ cls: "ggt-grid-cell" });
         el.addEventListener("pointerenter", () => mark(r, c));
         el.addEventListener("click", () => {
-          this.close();
-          this.pick(Math.max(2, r + 1), c + 1);
+          mark(r, c);
+          insert();
         });
         row.push(el);
       }
