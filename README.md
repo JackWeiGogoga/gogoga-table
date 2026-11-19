@@ -2,6 +2,8 @@
 
 **English** | [简体中文](https://github.com/JackWeiGogoga/gogoga-table/blob/main/README.zh-CN.md)
 
+**Website:** [obsidian.gogoga.top](https://obsidian.gogoga.top/en/plugins/gogoga-table/) — screenshots, features and downloads.
+
 Tables that look and feel like Notion or Feishu docs: click a cell to edit, color cells and resize columns in a click or a drag. Files stay plain Markdown tables, so they read fine without the plugin, on mobile and on GitHub.
 
 The interface follows Obsidian's language setting (English and Simplified Chinese). Works on desktop and mobile.

@@ -2,6 +2,8 @@
 
 [English](https://github.com/JackWeiGogoga/gogoga-table/blob/main/README.md) | **简体中文**
 
+**官网：**[obsidian.gogoga.top](https://obsidian.gogoga.top/plugins/gogoga-table/)，截图、功能介绍和下载。
+
 Notion、飞书文档那样的表格：好看，点格子就能改，底色、列宽一拖一点就好。文件里仍然是标准的 Markdown 表格，没装插件、在手机上、在 GitHub 上打开都是正常表格。
 
 界面语言跟随 Obsidian 的语言设置，支持简体中文和英文。桌面端和移动端都能用。
