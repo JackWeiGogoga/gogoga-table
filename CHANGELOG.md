@@ -4,7 +4,11 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.23.1] - 2026-11-20
+
 ### Fixed
+- On phones, tapping a row or column handle opened the menu and brought up the keyboard, which covered the menu; a long menu also went up behind the status bar. Tapping a handle no longer focuses the cell input (an open keyboard closes), and the menu stays inside the visible area below the status bar, scrolls when it's taller than the screen, and moves when the keyboard opens or closes.
+- A colored span that contains a line break (`<span style="color:…">a<br>b</span>`) showed its HTML tags while you edited the cell. Colors and highlights that span lines are now hidden and shown in color while editing, like single-line ones.
 - With some themes, text in a cell got bigger or smaller as soon as you started editing it: the theme's font size for the editor applied to the cell editor too. The cell editor now always uses the cell's own font size, font and line height.
 
 ## [0.23.0] - 2026-11-20
@@ -367,7 +371,8 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - First version: Markdown tables in Live Preview and Reading view become Notion-style tables. Click a cell to edit, Enter / Tab to move, add rows and columns, row and column handles plus a right-click menu, drag to resize columns, seven cell backgrounds, three styles and two row spacings; on mobile, tap to edit and long-press for the menu. Select a range to color, align or clear it at once; copy and paste with Excel, Feishu and the web; merge cells; drag row and column handles to reorder; sticky headers on long tables and scroll hints on wide ones. Fill handle; a per-table corner menu (style, three-line style, header column, align all, distribute or fit widths); sort by column; duplicate rows and columns and insert many at once; checkboxes; text colors; total rows; status columns; formatting keys plus [[ link and # tag completion while editing; Insert table and Convert text to table commands. Styled HTML copy. Coexists with Advanced Tables formulas and block ids. Files stay plain Markdown tables, with widths, colors, merges and more in one comment below the table.
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.0...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.1...HEAD
+[0.23.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.0...0.23.1
 [0.23.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.22.1...0.23.0
 [0.22.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.22.0...0.22.1
 [0.22.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.21.0...0.22.0
