@@ -4,6 +4,12 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 
 ## [Unreleased]
 
+## [0.23.2] - 2026-11-20
+
+### 修复
+- 格式化插件（比如 Linter 的「表格前后空行」）在表格和下面的注释之间插了空行后，合并单元格、颜色、列宽这些设置全不见了（B站反馈）：注释要紧贴着表格才认。现在中间隔着空行也认，改表格时空行原样留着，不会和格式化插件来回改。
+- 用 Advanced PDF Export、Beautiful PDF 这类插件导出 PDF 时，合并单元格、格子颜色没了（B站反馈）。它们把笔记渲染到一块看不见的地方再拿去打印，以前插件不管那里的表格；现在在那里的表格上补好合并和颜色，表格仍是原生的，不带按钮，换了它们的样式也能正常显示。
+
 ## [0.23.1] - 2026-11-20
 
 ### 修复
@@ -371,7 +377,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 ### 新增
 - 第一个版本：实时预览和阅读视图里的 Markdown 表格换成 Notion 风格的表格。点格子编辑，Enter / Tab 跳格，加行加列，行列手柄和右键菜单，拖列宽，七种底色，三套样式和两档行距；手机上点一下编辑、长按出菜单。选一片格子一起设底色、对齐、清空；和 Excel、飞书、网页互相复制粘贴；合并单元格；拖动行列手柄调整顺序；长表格表头吸顶，宽表格左右有滚动提示。下拉填充；表格左上角菜单（单表样式、三线表、标题列、整表对齐、平均分布列宽、撑满页面）；按列排序；复制行列、一次插入多行；勾选框；文字颜色；合计行；状态列；编辑格子时的格式快捷键和 [[ 链接、# 标签补全；插入表格、文字转表格等命令。复制带样式的 HTML。兼容 Advanced Tables 的公式注释和块标识。文件仍是标准 Markdown 表格，列宽、颜色、合并等存在表格下面的一行注释里。
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.1...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.2...HEAD
+[0.23.2]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.1...0.23.2
 [0.23.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.0...0.23.1
 [0.23.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.22.1...0.23.0
 [0.22.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.22.0...0.22.1

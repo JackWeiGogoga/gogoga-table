@@ -4,6 +4,12 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.23.2] - 2026-11-20
+
+### Fixed
+- When a formatter (such as Linter's blank lines around tables) put a blank line between a table and the comment below it, merged cells, colors and column widths were all lost (reported on Bilibili): the comment was only read when it sat right under the table. It is now read with blank lines in between too, and they stay as they are when you edit the table, so the plugin and the formatter don't keep rewriting each other.
+- Exporting with plugins such as Advanced PDF Export and Beautiful PDF lost merged cells and cell colors (reported on Bilibili). They render the note somewhere hidden and print that, and the plugin used to leave tables there alone. Those tables now get their merges and colors filled in; they stay plain tables without buttons, so they show correctly with those plugins' own styles.
+
 ## [0.23.1] - 2026-11-20
 
 ### Fixed
@@ -371,7 +377,8 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - First version: Markdown tables in Live Preview and Reading view become Notion-style tables. Click a cell to edit, Enter / Tab to move, add rows and columns, row and column handles plus a right-click menu, drag to resize columns, seven cell backgrounds, three styles and two row spacings; on mobile, tap to edit and long-press for the menu. Select a range to color, align or clear it at once; copy and paste with Excel, Feishu and the web; merge cells; drag row and column handles to reorder; sticky headers on long tables and scroll hints on wide ones. Fill handle; a per-table corner menu (style, three-line style, header column, align all, distribute or fit widths); sort by column; duplicate rows and columns and insert many at once; checkboxes; text colors; total rows; status columns; formatting keys plus [[ link and # tag completion while editing; Insert table and Convert text to table commands. Styled HTML copy. Coexists with Advanced Tables formulas and block ids. Files stay plain Markdown tables, with widths, colors, merges and more in one comment below the table.
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.1...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.2...HEAD
+[0.23.2]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.1...0.23.2
 [0.23.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.0...0.23.1
 [0.23.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.22.1...0.23.0
 [0.22.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.22.0...0.22.1

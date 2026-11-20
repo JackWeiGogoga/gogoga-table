@@ -8,7 +8,8 @@
 
 import { type App, MarkdownRenderChild, type MarkdownPostProcessorContext, MarkdownRenderer, MarkdownView, TFile } from "obsidian";
 import { blockTable, findTables, type TableBlock, writeBlock } from "../core/find";
-import type { Table } from "../core/table";
+import { parseRef, type Table } from "../core/table";
+import { merges } from "../core/ops";
 import { canIndent, indentTable } from "../core/indent";
 import { sameTable, TableEditor } from "../editor/editor";
 import type { TableHostFactory } from "./host";
@@ -244,26 +245,108 @@ function headerLooksSame(tableEl: HTMLTableElement, table: Table): boolean {
 
 /**
  * 拿不到行号、也不在页面上的渲染：Export Image 这类插件把整篇笔记用 MarkdownRenderer 重新渲染到一块没挂上页面的元素里再截图（#7）。
- * 后处理是一段一段调的，单看一段不知道是第几张表，等这一轮渲染完（各段都放进了同一个容器）再按整篇对一次
+ * 后处理是一段一段调的，单看一段不知道是第几张表，等这一轮渲染完（各段都放进了同一个容器）再按整篇对一次。
+ * 挂在页面上、但在 Obsidian 界面之外的看不见的容器（Advanced PDF Export、Beautiful PDF 导出 PDF，B站反馈合并单元格丢了）：
+ * 它们拿渲染结果的 HTML 去新窗口打印、只带自己的样式，换成我们的表格反而乱（按钮、颜色都靠我们的样式表），所以只在原生表格上补合并和颜色
  */
 const pendingDetached = new Map<HTMLElement, MarkdownPostProcessorContext>();
 let detachedTimer = 0;
-function queueDetached(app: App, factory: TableHostFactory, el: HTMLElement, ctx: MarkdownPostProcessorContext): void {
+let detachedDone: Promise<void> | null = null;
+function queueDetached(app: App, factory: TableHostFactory, el: HTMLElement, ctx: MarkdownPostProcessorContext): Promise<void> {
   pendingDetached.set(el, ctx);
-  if (detachedTimer) return;
-  detachedTimer = window.setTimeout(() => {
-    detachedTimer = 0;
-    const roots = new Map<HTMLElement, MarkdownPostProcessorContext>();
-    for (const [sec, c] of pendingDetached) {
-      let root = sec;
-      while (root.parentElement) root = root.parentElement;
-      // 挂上页面了（比如悬停预览）或者已经交给别的路子：不管
-      if (root.isConnected || roots.has(root)) continue;
-      roots.set(root, c);
+  if (detachedTimer && detachedDone) return detachedDone;
+  detachedDone = new Promise<void>((resolve) => {
+    detachedTimer = window.setTimeout(() => {
+      detachedTimer = 0;
+      const roots = new Map<HTMLElement, MarkdownPostProcessorContext>();
+      const hosts = new Map<HTMLElement, MarkdownPostProcessorContext>();
+      for (const [sec, c] of pendingDetached) {
+        let root = sec;
+        while (root.parentElement) root = root.parentElement;
+        if (!root.isConnected) {
+          if (!roots.has(root)) roots.set(root, c);
+          continue;
+        }
+        // 挂上页面了：只管 Obsidian 界面之外的看不见的容器（悬停预览、弹窗这些照旧不管）
+        const host = offPageHost(sec);
+        if (host && !hosts.has(host)) hosts.set(host, c);
+      }
+      pendingDetached.clear();
+      const jobs: Promise<void>[] = [];
+      for (const [root, c] of roots) jobs.push(exportProcessor(app, factory, root, c, true));
+      for (const [host, c] of hosts) jobs.push(patchOffPage(app, host, c));
+      void Promise.all(jobs).finally(() => resolve());
+    }, 0);
+  });
+  return detachedDone;
+}
+
+/** body 下面直接挂着的、不是 Obsidian 界面（主窗口、悬停预览、弹窗、菜单、打印）的那一层；别的插件为导出临时建的容器 */
+function offPageHost(el: HTMLElement): HTMLElement | null {
+  const body = el.doc.body;
+  let top: HTMLElement = el;
+  while (top.parentElement && top.parentElement !== body) top = top.parentElement;
+  if (top.parentElement !== body) return null;
+  if (top.matches(".app-container, .popover, .hover-popover, .modal-container, .menu, .print, .tooltip, .notice-container, .workspace")) return null;
+  return top;
+}
+
+const BG_ALPHA: Record<string, number> = { gray: 0.07, red: 0.14, orange: 0.15, yellow: 0.18, green: 0.14, blue: 0.13, purple: 0.13 };
+
+/** 别的插件的导出：原生表格按原文对上后，合并写成 rowspan/colspan（被盖住的格子去掉），底色、文字颜色写成行内样式 */
+async function patchOffPage(app: App, host: HTMLElement, ctx: MarkdownPostProcessorContext): Promise<void> {
+  const file = app.vault.getAbstractFileByPath(ctx.sourcePath);
+  if (!(file instanceof TFile)) return;
+  const tables = Array.from(host.querySelectorAll<HTMLTableElement>("table")).filter(
+    (t) => !t.closest(".ggt, blockquote, .callout, .internal-embed, .markdown-embed") && !t.dataset.ggtPatched,
+  );
+  if (!tables.length) return;
+  const lines = (await app.vault.cachedRead(file)).split("\n");
+  const blocks = findTables(lines).filter((b) => !b.indent || lines[b.start - 1]?.trim() === "");
+  const pairs: [HTMLTableElement, Table][] = [];
+  let bi = 0;
+  for (const tableEl of tables) {
+    const [rows, cols] = domSize(tableEl);
+    let hit = -1;
+    for (let j = bi; j < blocks.length; j++) {
+      const t = blockTable(lines, blocks[j]);
+      if (t && t.cells.length === rows && (t.cells[0]?.length ?? 0) === cols && headerLooksSame(tableEl, t)) {
+        hit = j;
+        break;
+      }
     }
-    pendingDetached.clear();
-    for (const [root, c] of roots) void exportProcessor(app, factory, root, c, true);
-  }, 0);
+    // 有一张对不上就整篇都不动，免得把别的表的合并套上去
+    if (hit < 0) return;
+    bi = hit + 1;
+    pairs.push([tableEl, blockTable(lines, blocks[hit])!]);
+  }
+  const css = getComputedStyle(host.doc.body);
+  const v = (name: string) => css.getPropertyValue(name).trim();
+  for (const [tableEl, table] of pairs) {
+    tableEl.dataset.ggtPatched = "1";
+    const grid = Array.from(tableEl.rows).map((row) => Array.from(row.cells));
+    const paint = (ref: string, color: string, kind: "bg" | "fg") => {
+      const at = parseRef(ref);
+      const cell = at && grid[at.r]?.[at.c];
+      if (!cell) return;
+      if (kind === "bg") {
+        const rgb = color === "gray" ? v("--mono-rgb-100") : v(`--color-${color}-rgb`);
+        if (rgb) cell.style.setProperty("background-color", `rgba(${rgb}, ${BG_ALPHA[color] ?? 0.14})`);
+      } else {
+        const c = color === "gray" ? v("--text-muted") : v(`--color-${color}`);
+        if (c) cell.style.setProperty("color", c);
+      }
+    };
+    for (const [ref, color] of Object.entries(table.meta.bg ?? {})) paint(ref, color, "bg");
+    for (const [ref, color] of Object.entries(table.meta.fg ?? {})) paint(ref, color, "fg");
+    for (const m of merges(table)) {
+      const first = grid[m.r1]?.[m.c1];
+      if (!first) continue;
+      first.rowSpan = m.r2 - m.r1 + 1;
+      first.colSpan = m.c2 - m.c1 + 1;
+      for (let r = m.r1; r <= m.r2; r++) for (let c = m.c1; c <= m.c2; c++) if (r !== m.r1 || c !== m.c1) grid[r]?.[c]?.remove();
+    }
+  }
 }
 
 /** 按存着的列宽（像素，没拖过的列是 0）换成百分比：没拖过的列按拖过的平均宽度算；表格宽度取总宽和页面宽里小的 */
@@ -286,7 +369,13 @@ export function readingProcessor(app: App, factory: TableHostFactory) {
       // 导出 PDF 时整篇一次渲染，el 是整篇的容器（带 markdown-preview-view）
       if (el.closest(".print")) await exportProcessor(app, factory, el, ctx);
       // 别的插件把笔记渲染到页面外（导出图片）：等这一轮渲染完按整篇对；页面上拿不到行号的照旧不管
-      else if (!el.isConnected && el.querySelector("table")) queueDetached(app, factory, el, ctx);
+      // 别的插件为导出 PDF 渲染到页面上一块看不见的容器：同样等这一轮渲染完按整篇对，只在原生表格上补合并和颜色。
+      // 交给 ctx.promises，等着后处理的渲染（MarkdownRenderer.render）会等它补完
+      else if (el.querySelector("table") && (!el.isConnected || offPageHost(el))) {
+        const p = queueDetached(app, factory, el, ctx);
+        (ctx as MarkdownPostProcessorContext & { promises?: Promise<unknown>[] }).promises?.push(p);
+        await p;
+      }
       return;
     }
     // 原文正常拿得到时同步处理（不多等一拍，免得先闪一下原生表格）
