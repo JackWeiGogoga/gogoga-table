@@ -4,6 +4,9 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Fixed
+- With some themes, text in a cell got bigger or smaller as soon as you started editing it: the theme's font size for the editor applied to the cell editor too. The cell editor now always uses the cell's own font size, font and line height.
+
 ## [0.23.0] - 2026-11-20
 
 ### Added
