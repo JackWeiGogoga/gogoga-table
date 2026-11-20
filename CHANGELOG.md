@@ -4,6 +4,18 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+### Added
+- Encrypted columns: choose Encrypted under Column type in the column menu, and the column stores text encrypted with a master password, for things like passwords and account numbers. The first time, you set a master password (typed twice, with an optional hint); after that, enter it once per Obsidian session to view and edit encrypted columns in every table. Cells show ••••••; hover to show a cell with the eye button or copy it with the copy button (cleared from the clipboard after 30 seconds), and Mod+C on a single encrypted cell copies it too. While editing, the cell shows the plain text and is encrypted when you press Enter; content pasted into an encrypted column is encrypted before it's saved. Notes only ever contain the encrypted text.
+  - The encrypted text uses the same format as Meld Encrypt 3.x inline encryption (`%%🔐γ … 🔐%%`), so either plugin can decrypt it with the same password. Without this plugin, Obsidian's own tables hide it as a comment.
+  - "Lock encrypted columns after" setting: lock after 5 minutes, 15 minutes or 1 hour of inactivity, or never. "Lock encrypted content" in the command palette or the column menu locks right away.
+  - "Master password from the keychain" setting (Obsidian 1.13.2 and later): pick the keychain entry that holds your master password so you don't have to type it. Pick the same entry in Meld Encrypt to share one master password.
+  - The master password is kept in memory only. Settings store a short text encrypted with it to check the password, not the password itself. If you forget the master password, the content can't be recovered.
+  - Encrypted columns can't be sorted or totaled. Changing one to another type asks first, then saves its content back to the note decrypted.
+- Encrypt single cells: select one or more cells in a regular column and choose Encrypt from the right-click menu to encrypt just those cells. Right-click an encrypted cell and choose Remove encryption (after a confirmation) to save it as plain text again. Status and multi-select cells can't be encrypted on their own.
+- "Change master password" command: re-encrypts everything in the vault that uses the old master password with a new one, including encrypted table cells and Meld Encrypt inline text that uses the same password. It tells you how many notes and items it will change first. Text encrypted with other passwords and whole-note .mdenc files aren't changed. If any item can't be re-encrypted, nothing is changed.
+- Meld Encrypt's older `🔐β` format can be decrypted too; cells you edit are saved in the newer `🔐γ` format.
+- With gogoga Mind Map installed as well, encrypted cells in mind map node tables can be unlocked, viewed and edited too, using the same master password, and they lock together.
+
 ## [0.22.1] - 2026-11-19
 
 ### Fixed

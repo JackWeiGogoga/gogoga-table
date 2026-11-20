@@ -6,8 +6,10 @@ import type { EditorHost, MenuItem, TableEditor } from "../editor/editor";
 import { t } from "../editor/i18n";
 import { guardEditorHotkeys } from "./keys";
 import { dailyNote } from "./daily";
+import { confirmBox, makeSecretBox, type SecretSettings } from "./secret";
+import type { SecretBox } from "../core/secret-box";
 
-export interface TableSettings {
+export interface TableSettings extends SecretSettings {
   /** 接管 Markdown 表格（关掉就完全是 Obsidian 原生表格） */
   enabled: boolean;
   preset: "default" | "zebra" | "minimal" | "academic";
@@ -54,6 +56,8 @@ export const DEFAULT_SETTINGS: TableSettings = {
   center: false,
   strictStyle: true,
   cellPadX: 10,
+  secretLock: 15,
+  secretKeychain: "",
 };
 
 export interface TableHostFactory {
@@ -66,6 +70,8 @@ export interface TableHostFactory {
   style(root: HTMLElement): void;
   /** 编辑器挂上以后：接管 Obsidian 的编辑器快捷键等。返回拆掉时调的清理 */
   attach(editor: TableEditor): () => void;
+  /** 加密列的主密码会话（所有表格共用） */
+  secrets: SecretBox;
 }
 
 /** Obsidian 自己给链接右键用的菜单（内部方法，没有就不加；有它菜单才和笔记里一模一样） */
@@ -149,6 +155,7 @@ function stamp(d = new Date()): string {
 }
 
 export function makeFactory(app: App, settings: () => TableSettings, persist: () => void = () => {}): TableHostFactory {
+  const secrets = makeSecretBox(app, settings, persist);
   // 格式栏颜色下拉记住的颜色，所有表格共用一份，存在设置里（只写 data.json，不重画表格）
   const colorMemory: ColorMemory = {
     last: (k) => settings().colorMemory?.last?.[k] ?? null,
@@ -161,6 +168,7 @@ export function makeFactory(app: App, settings: () => TableSettings, persist: ()
     },
   };
   return {
+    secrets,
     enabled: () => settings().enabled,
     readingReadonly: () => settings().readingReadonly,
     host: (sourcePath, owner, own) => {
@@ -245,6 +253,8 @@ export function makeFactory(app: App, settings: () => TableSettings, persist: ()
         },
         richEdit: () => settings().richEdit,
         smartDate: () => settings().smartDate,
+        secrets: () => secrets,
+        confirm: (message, ok) => confirmBox(app, message, ok),
         // 设置「编辑格子时选中文字显示格式栏」打开才出；在 gogoga Mind Map 的备注编辑框里不看设置，一直出：
         // 那里正文选中文字一直有格式栏，表格里没有就像是坏了（群友反馈「备注表格里的高亮还是不行」）
         formatColors: (root) =>

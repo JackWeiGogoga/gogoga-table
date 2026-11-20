@@ -1,4 +1,4 @@
-import { type App, getLanguage, MarkdownView, Plugin, PluginSettingTab, Setting, type SettingDefinitionItem } from "obsidian";
+import { type App, getLanguage, MarkdownView, Plugin, PluginSettingTab, requireApiVersion, Setting, type SettingDefinitionItem } from "obsidian";
 import type { Extension } from "@codemirror/state";
 import { setLanguage, t } from "./editor/i18n";
 import { activeTableEditor, TABLE_COMMANDS } from "./editor/editor";
@@ -8,6 +8,8 @@ import { canPasteTableAt, gridToTable, insertTableAtSelection, pastedGrid, paste
 import { DEFAULT_SETTINGS, makeFactory, type TableHostFactory, type TableSettings } from "./obsidian/host";
 import { livePreviewTables } from "./obsidian/live-preview";
 import { readingProcessor } from "./obsidian/reading";
+import { changeMasterPassword, keychain } from "./obsidian/secret";
+import type { SecretBox } from "./core/secret-box";
 
 export default class TablePlugin extends Plugin {
   settings: TableSettings = { ...DEFAULT_SETTINGS };
@@ -15,6 +17,11 @@ export default class TablePlugin extends Plugin {
   private readonly extensions: Extension[] = [];
   private livePreview: Extension | null = null;
   private factory: TableHostFactory | null = null;
+
+  /** 加密列的主密码会话：gogoga Mind Map 的节点表格也用这一个（两边共用主密码、一起锁定） */
+  get secrets(): SecretBox | null {
+    return this.factory?.secrets ?? null;
+  }
 
   async onload(): Promise<void> {
     setLanguage(getLanguage());
@@ -63,6 +70,23 @@ export default class TablePlugin extends Plugin {
         insertTableAtSelection(editor, lines);
       }),
     );
+    // 加密列：马上锁上（忘掉主密码和解开的内容）
+    this.addCommand({
+      id: "lock-encrypted",
+      name: t("encLock"),
+      icon: "lock",
+      checkCallback: (checking) => {
+        if (!factory.secrets.unlocked) return false;
+        if (!checking) factory.secrets.lock();
+        return true;
+      },
+    });
+    this.addCommand({
+      id: "change-master-password",
+      name: t("encRekey"),
+      icon: "key-round",
+      callback: () => void changeMasterPassword(this.app, factory.secrets, !!this.settings.secretKeychain),
+    });
     // 表格操作：作用在最近选中格子的那张表上，可以绑快捷键
     for (const id of TABLE_COMMANDS) {
       this.addCommand({
@@ -81,6 +105,7 @@ export default class TablePlugin extends Plugin {
   }
 
   onunload(): void {
+    this.factory?.secrets.lock();
     // 关掉插件：阅读视图换回原生表格
     window.setTimeout(() => this.refresh(), 0);
   }
@@ -111,12 +136,12 @@ interface SettingSpec {
   key: keyof TableSettings;
   name: string;
   desc?: string;
-  type: "toggle" | "dropdown";
+  type: "toggle" | "dropdown" | "secret";
   options?: Record<string, string>;
 }
 
 /** 设置项清单：Obsidian 1.13 起交给它的声明式设置（设置里能搜到），更早的版本照这份清单自己画 */
-function settingSpecs(): SettingSpec[] {
+function settingSpecs(hasKeychain: boolean): SettingSpec[] {
   const zh = getLanguage().startsWith("zh");
   return [
     {
@@ -215,6 +240,27 @@ function settingSpecs(): SettingSpec[] {
         : "In date columns, typing 1/5, 11-17, 2026年1月5日, 20260105, today, tomorrow or yesterday becomes the column's date style when you press Enter (such as 2026-01-05, or a daily note link [[2026-01-05]]). Dates without a year use the current year. When off, only dates like 2026-1-5 are tidied and everything else is kept as typed.",
       type: "toggle",
     },
+    {
+      key: "secretLock",
+      name: zh ? "加密列自动锁定" : "Lock encrypted columns after",
+      desc: zh
+        ? "输入主密码后，多久不用就自动锁上，忘掉主密码和解开的内容。也可以用命令「锁定加密内容」马上锁。"
+        : "How long encrypted columns stay unlocked when not in use. Locking forgets the master password and anything decrypted. You can also lock right away with the Lock encrypted content command.",
+      type: "dropdown",
+      options: zh ? { "5": "5 分钟", "15": "15 分钟", "60": "1 小时", "0": "不自动锁（关掉 Obsidian 时忘掉）" } : { "5": "5 minutes", "15": "15 minutes", "60": "1 hour", "0": "Never (forgotten when Obsidian closes)" },
+    },
+    ...(hasKeychain
+      ? [
+          {
+            key: "secretKeychain" as const,
+            name: zh ? "主密码存在钥匙串里" : "Master password from the keychain",
+            desc: zh
+              ? "选 Obsidian 钥匙串里存着主密码的那一项，打开加密列时不用再输密码（每台设备各自设置）。和 Meld Encrypt 选同一项，整篇加密、行内加密和表格的加密列就共用一个主密码。不选就每次手动输入。"
+              : "Pick the Obsidian keychain entry that holds your master password, so encrypted columns open without typing it (set this on each device). Pick the same entry in Meld Encrypt to share one master password between whole-note encryption, inline encryption and encrypted columns. Leave empty to type it each time.",
+            type: "secret" as const,
+          },
+        ]
+      : []),
   ];
 }
 
@@ -227,10 +273,11 @@ class TableSettingTab extends PluginSettingTab {
   }
 
   getSettingDefinitions(): SettingDefinitionItem[] {
-    return settingSpecs().map((x) => ({
+    // 声明式设置的钥匙串选择框 1.13.2 才有
+    return settingSpecs(!!keychain(this.app) && requireApiVersion("1.13.2")).map((x) => ({
       name: x.name,
       desc: x.desc,
-      control: x.type === "toggle" ? { type: "toggle", key: x.key } : { type: "dropdown", key: x.key, options: x.options ?? {} },
+      control: x.type === "toggle" ? { type: "toggle", key: x.key } : x.type === "secret" ? { type: "secret", key: x.key } : { type: "dropdown", key: x.key, options: x.options ?? {} },
     }));
   }
 
@@ -250,10 +297,11 @@ class TableSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    for (const x of settingSpecs()) {
+    for (const x of settingSpecs(!!keychain(this.app))) {
       const row = new Setting(containerEl).setName(x.name);
       if (x.desc) row.setDesc(x.desc);
-      if (x.type === "toggle") row.addToggle((tg) => tg.setValue(this.getControlValue(x.key) as boolean).onChange((v) => this.setControlValue(x.key, v)));
+      if (x.type === "secret") row.addText((tx) => tx.setValue(this.getControlValue(x.key) as string).onChange((v) => this.setControlValue(x.key, v.trim())));
+      else if (x.type === "toggle") row.addToggle((tg) => tg.setValue(this.getControlValue(x.key) as boolean).onChange((v) => this.setControlValue(x.key, v)));
       else row.addDropdown((dd) => dd.addOptions(x.options ?? {}).setValue(this.getControlValue(x.key) as string).onChange((v) => this.setControlValue(x.key, v)));
     }
   }
