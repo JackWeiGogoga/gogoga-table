@@ -56,8 +56,8 @@ class TableWidget extends WidgetType {
     (wrap as HTMLElement & { ggtOwner?: Component }).ggtOwner = owner;
     const editor = new TableEditor(wrap, this.table, this.factory.host(view.state.field(editorInfoField, false)?.file?.path ?? "", owner, {
       onChange: (next) => writeBack(view, wrap, next),
-      undo: () => undo(view),
-      redo: () => redo(view),
+      undo: () => historyKeepingPlace(view, wrap, undo),
+      redo: () => historyKeepingPlace(view, wrap, redo),
       onLeave: (where) => leave(view, wrap, where),
       onDeleteTable: () => removeTable(view, wrap),
       indentTable: (dir) => indentAt(view, wrap, dir),
@@ -197,8 +197,36 @@ function writeBack(view: EditorView, dom: HTMLElement, table: Table): void {
   const text = writeBlock(table, at.block).join("\n");
   const old = view.state.sliceDoc(at.from, at.to);
   if (old === text) return;
+  cursorBesideTable(view, at);
   // 只写回变了的那几个字：Obsidian 背后的原生表格才走局部更新，不整张重建（大表上差几倍）
   view.dispatch({ changes: diffText(old, text, at.from), userEvent: "input.table" });
+}
+
+/**
+ * 表格改动写进文档之前，把编辑器光标放到表格旁边（不进撤销历史）。
+ * ⌘Z 撤回时编辑器把光标恢复到「改之前」的位置并滚过去；在表格里编辑时编辑器自己的光标一直停在别处
+ * （刚打开笔记时是文档开头），不先挪过来，撤回就跳到文档顶部（用户反馈）
+ */
+function cursorBesideTable(view: EditorView, at: { from: number; to: number }): void {
+  const doc = view.state.doc;
+  const head = view.state.selection.main.head;
+  if (view.state.selection.ranges.length === 1 && head >= at.from - 1 && head <= at.to + 1) return;
+  // 表格下面一行的开头；表格在最后时放到上一行末尾（放在表格后面没有行，挪出表格的守卫会补一个空行）
+  const pos = at.to < doc.length ? at.to + 1 : at.from > 0 ? at.from - 1 : -1;
+  if (pos < 0) return;
+  view.dispatch({ selection: { anchor: pos }, annotations: Transaction.addToHistory.of(false) });
+}
+
+/**
+ * 表格里按 ⌘Z / ⌘⇧Z：撤回的是这张表的改动（撤回后光标在表格旁边）时，画面留在原地，不滚到光标那里；
+ * 撤回的是别处的改动就照常滚过去
+ */
+function historyKeepingPlace(view: EditorView, dom: HTMLElement, cmd: (v: EditorView) => boolean): void {
+  const snap = typeof view.scrollSnapshot === "function" ? view.scrollSnapshot() : null;
+  if (!cmd(view) || !snap) return;
+  const at = blockAt(view, dom);
+  const head = view.state.selection.main.head;
+  if (at && head >= at.from - 1 && head <= at.to + 1) view.dispatch({ effects: snap });
 }
 
 /** 整张表往里缩 / 移出列表：按行算出新文件，只改变了的那几处；走编辑器事务，⌘Z 能撤回 */
@@ -208,6 +236,7 @@ function indentAt(view: EditorView, dom: HTMLElement, dir: 1 | -1): void {
   const doc = view.state.doc;
   const next = indentTable(docLines(doc), at.block, dir);
   if (!next) return;
+  cursorBesideTable(view, at);
   view.dispatch({ changes: diffText(doc.toString(), next.join("\n")), userEvent: "input.table" });
 }
 

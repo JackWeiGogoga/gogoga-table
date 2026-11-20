@@ -4,6 +4,8 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-11-20
+
 ### Added
 - Encrypted columns: choose Encrypted under Column type in the column menu, and the column stores text encrypted with a master password, for things like passwords and account numbers. The first time, you set a master password (typed twice, with an optional hint); after that, enter it once per Obsidian session to view and edit encrypted columns in every table. Cells show ••••••; hover to show a cell with the eye button or copy it with the copy button (cleared from the clipboard after 30 seconds), and Mod+C on a single encrypted cell copies it too. While editing, the cell shows the plain text and is encrypted when you press Enter; content pasted into an encrypted column is encrypted before it's saved. Notes only ever contain the encrypted text.
   - The encrypted text uses the same format as Meld Encrypt 3.x inline encryption (`%%🔐γ … 🔐%%`), so either plugin can decrypt it with the same password. Without this plugin, Obsidian's own tables hide it as a comment.
@@ -15,6 +17,9 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 - "Change master password" command: re-encrypts everything in the vault that uses the old master password with a new one, including encrypted table cells and Meld Encrypt inline text that uses the same password. It tells you how many notes and items it will change first. Text encrypted with other passwords and whole-note .mdenc files aren't changed. If any item can't be re-encrypted, nothing is changed.
 - Meld Encrypt's older `🔐β` format can be decrypted too; cells you edit are saved in the newer `🔐γ` format.
 - With gogoga Mind Map installed as well, encrypted cells in mind map node tables can be unlocked, viewed and edited too, using the same master password, and they lock together.
+
+### Fixed
+- Pressing Mod+Z (or Mod+Shift+Z) in a table in Live Preview jumped the view and the editor cursor to the top of the note (reported by a user). Undoing a change in the table now keeps the view where it is, with the cursor next to the table; undoing a change outside the table still jumps there as before.
 
 ## [0.22.1] - 2026-11-19
 
@@ -359,7 +364,8 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - First version: Markdown tables in Live Preview and Reading view become Notion-style tables. Click a cell to edit, Enter / Tab to move, add rows and columns, row and column handles plus a right-click menu, drag to resize columns, seven cell backgrounds, three styles and two row spacings; on mobile, tap to edit and long-press for the menu. Select a range to color, align or clear it at once; copy and paste with Excel, Feishu and the web; merge cells; drag row and column handles to reorder; sticky headers on long tables and scroll hints on wide ones. Fill handle; a per-table corner menu (style, three-line style, header column, align all, distribute or fit widths); sort by column; duplicate rows and columns and insert many at once; checkboxes; text colors; total rows; status columns; formatting keys plus [[ link and # tag completion while editing; Insert table and Convert text to table commands. Styled HTML copy. Coexists with Advanced Tables formulas and block ids. Files stay plain Markdown tables, with widths, colors, merges and more in one comment below the table.
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.22.1...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.0...HEAD
+[0.23.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.22.1...0.23.0
 [0.22.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.22.0...0.22.1
 [0.22.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.21.0...0.22.0
 [0.21.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.20.0...0.21.0
