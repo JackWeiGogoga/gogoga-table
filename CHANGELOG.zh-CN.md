@@ -4,6 +4,14 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 
 ## [Unreleased]
 
+## [0.23.4] - 2026-11-21
+
+### 修复
+- 手机、平板上表格宽时整页不会再跟着左右滑：加列的加号收进正文里，不再伸出页面边缘。
+- iPhone、iPad 上表格菜单（长按格子、表格左上角）看得见却点不动，点下去落到了后面的格子或正文上，只有菜单刚好盖在表格外面的那几项偶尔能用（小红书反馈「删除行列只有最后一行一列才有用」）。现在菜单、格式栏、补全列表、日历在手机上都能正常点。
+- iPhone、iPad 上调列宽的把手跑到了表格最左边，一拖就拉出了 Obsidian 的左侧栏，列宽很难改（小红书反馈）。现在把手在选中那一列的右边线上，拖动时也不会再带出侧栏。
+- 手机、平板上编辑着一个空格子时长按，只出系统的「粘贴、选择、全选」，出不来表格菜单（小红书反馈）。现在空格子里长按出表格菜单；有字的格子照旧交给系统（放光标、选字）。
+
 ## [0.23.3] - 2026-11-20
 
 ### 修复
@@ -382,7 +390,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 ### 新增
 - 第一个版本：实时预览和阅读视图里的 Markdown 表格换成 Notion 风格的表格。点格子编辑，Enter / Tab 跳格，加行加列，行列手柄和右键菜单，拖列宽，七种底色，三套样式和两档行距；手机上点一下编辑、长按出菜单。选一片格子一起设底色、对齐、清空；和 Excel、飞书、网页互相复制粘贴；合并单元格；拖动行列手柄调整顺序；长表格表头吸顶，宽表格左右有滚动提示。下拉填充；表格左上角菜单（单表样式、三线表、标题列、整表对齐、平均分布列宽、撑满页面）；按列排序；复制行列、一次插入多行；勾选框；文字颜色；合计行；状态列；编辑格子时的格式快捷键和 [[ 链接、# 标签补全；插入表格、文字转表格等命令。复制带样式的 HTML。兼容 Advanced Tables 的公式注释和块标识。文件仍是标准 Markdown 表格，列宽、颜色、合并等存在表格下面的一行注释里。
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.3...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.4...HEAD
+[0.23.4]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.3...0.23.4
 [0.23.3]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.2...0.23.3
 [0.23.2]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.1...0.23.2
 [0.23.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.0...0.23.1

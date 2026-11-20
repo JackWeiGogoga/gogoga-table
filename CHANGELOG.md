@@ -4,6 +4,14 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.23.4] - 2026-11-21
+
+### Fixed
+- On phones and tablets, a wide table no longer makes the whole page slide sideways: the add-column button now sits inside the page margin instead of poking past it.
+- On iPhone and iPad, table menus (long-pressing a cell, the table corner button) showed up but couldn't be tapped: taps went through to the cell or note behind them, so only items that happened to sit outside the table sometimes worked (reported on Xiaohongshu). Menus, the format bar, suggestions and the date picker now respond to taps on phones and tablets.
+- On iPhone and iPad, the column-width handle sat at the table's left edge, so dragging it opened Obsidian's left sidebar and resizing columns was hard (reported on Xiaohongshu). The handle now sits on the right edge of the selected column, and dragging it no longer pulls out the sidebar.
+- On phones and tablets, long-pressing an empty cell while editing it showed only the system's Paste / Select / Select All menu instead of the table menu (reported on Xiaohongshu). An empty cell now opens the table menu; cells with text still get the system long-press for placing the cursor and selecting text.
+
 ## [0.23.3] - 2026-11-20
 
 ### Fixed
@@ -382,7 +390,8 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - First version: Markdown tables in Live Preview and Reading view become Notion-style tables. Click a cell to edit, Enter / Tab to move, add rows and columns, row and column handles plus a right-click menu, drag to resize columns, seven cell backgrounds, three styles and two row spacings; on mobile, tap to edit and long-press for the menu. Select a range to color, align or clear it at once; copy and paste with Excel, Feishu and the web; merge cells; drag row and column handles to reorder; sticky headers on long tables and scroll hints on wide ones. Fill handle; a per-table corner menu (style, three-line style, header column, align all, distribute or fit widths); sort by column; duplicate rows and columns and insert many at once; checkboxes; text colors; total rows; status columns; formatting keys plus [[ link and # tag completion while editing; Insert table and Convert text to table commands. Styled HTML copy. Coexists with Advanced Tables formulas and block ids. Files stay plain Markdown tables, with widths, colors, merges and more in one comment below the table.
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.3...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.4...HEAD
+[0.23.4]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.3...0.23.4
 [0.23.3]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.2...0.23.3
 [0.23.2]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.1...0.23.2
 [0.23.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.0...0.23.1
