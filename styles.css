@@ -180,7 +180,8 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: var(--ggt-kb, 0px);
+  /* iOS 上软键盘盖在网页上面，可见区域不变：跟 Obsidian 自己的工具条一样，按它写在页面上的 --keyboard-height 往上抬 */
+  bottom: max(var(--ggt-kb, 0px), var(--keyboard-height, 0px));
   z-index: var(--layer-popover, 30);
   display: flex;
   align-items: center;
@@ -195,6 +196,7 @@
   user-select: none;
   -webkit-user-select: none;
 }
+body.ggt-cell-editing .mobile-toolbar { display: none !important; }
 .ggt-mobile-bar .ggt-mobile-btn { all: unset; flex: none; display: flex; align-items: center; justify-content: center; width: 40px; height: 36px; border-radius: 8px; color: var(--text-normal); font-weight: 600; }
 .ggt-mobile-bar .ggt-mobile-btn:active { background: var(--background-modifier-hover); }
 .ggt-mobile-bar .ggt-mobile-btn svg { width: 20px; height: 20px; }
@@ -433,7 +435,8 @@ body.is-mobile .ggt-menu { z-index: 2147483000; backdrop-filter: none; -webkit-b
 .ggt-fill { position: absolute; z-index: 6; display: none; width: 8px; height: 8px; box-sizing: border-box; border: 1.5px solid var(--background-primary); border-radius: 2px; background: var(--ggt-sel); cursor: crosshair; touch-action: none; }
 .ggt-fill.is-shown { display: block; }
 .ggt-fill::before { content: ""; position: absolute; inset: -6px; }
-.is-mobile .ggt-fill { width: 14px; height: 14px; border-radius: 4px; }
+.is-mobile .ggt-fill { width: 14px; height: 14px; border-radius: 50%; }
+.is-mobile .ggt-fill::before { inset: -14px; }
 .ggt-fill-preview { position: absolute; z-index: 3; display: none; border: 1.5px dashed var(--ggt-sel); border-radius: 2px; pointer-events: none; box-sizing: border-box; }
 .ggt-fill-preview.is-shown { display: block; }
 .ggt.is-filling, .ggt.is-filling * { cursor: crosshair !important; user-select: none; }
@@ -895,3 +898,4 @@ body.is-mobile .ggt-menu { z-index: 2147483000; backdrop-filter: none; -webkit-b
 .ggt-hbar::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 6px; background-clip: padding-box; background-color: var(--scrollbar-thumb-bg, rgba(0, 0, 0, 0.2)); }
 .ggt-hbar::-webkit-scrollbar-thumb:hover { background-color: var(--scrollbar-active-thumb-bg, rgba(0, 0, 0, 0.35)); }
 @media print { .ggt-hbar { display: none !important; } }
+
