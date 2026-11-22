@@ -1,4 +1,4 @@
-import { type App, getLanguage, MarkdownView, Plugin, PluginSettingTab, requireApiVersion, Setting, type SettingDefinitionItem } from "obsidian";
+import { type App, getLanguage, MarkdownView, Notice, Plugin, PluginSettingTab, requireApiVersion, Setting, type SettingDefinitionItem } from "obsidian";
 import type { Extension } from "@codemirror/state";
 import { setLanguage, t } from "./editor/i18n";
 import { activeTableEditor, TABLE_COMMANDS } from "./editor/editor";
@@ -101,7 +101,14 @@ export default class TablePlugin extends Plugin {
       });
     }
     // 打开着的笔记重画一遍：已经渲染好的阅读视图不会自己再跑一遍后处理
-    this.app.workspace.onLayoutReady(() => this.refresh());
+    this.app.workspace.onLayoutReady(() => {
+      this.refresh();
+      // styles.css 没加载（手动安装漏了这个文件、同步盘没同步过来）时，表格下面会冒出一排按钮、每行很高（B站反馈）：提示一下
+      const timer = window.setTimeout(() => {
+        if (!getComputedStyle(document.body).getPropertyValue("--ggt-styles-loaded").trim()) new Notice(t("stylesMissing").replace("{dir}", this.manifest.dir ?? ""), 0);
+      }, 3000);
+      this.register(() => window.clearTimeout(timer));
+    });
   }
 
   onunload(): void {
@@ -183,6 +190,14 @@ function settingSpecs(hasKeychain: boolean): SettingSpec[] {
       desc: zh
         ? "比正文窄的表格放在页面正中间（阅读视图和实时预览都是），默认靠左。比正文还宽、要左右滑动的表格和撑满页面宽度的表格照旧。只改显示，不往笔记里写东西。"
         : "Tables narrower than the page sit in the middle of it, in Reading view and Live Preview, instead of on the left. Tables wider than the page (which scroll sideways) and tables that fill the page width stay as they are. Display only — nothing is written to your notes.",
+      type: "toggle",
+    },
+    {
+      key: "hideBlankAbove",
+      name: zh ? "隐藏表格上方的空行" : "Hide the blank line above tables",
+      desc: zh
+        ? "Markdown 规定表格前面要空一行，实时预览里这一行会留出一截空白。打开后藏起来，表格紧贴着上面的文字；光标移到这一行时照常显示。只改显示，笔记里的空行还在。"
+        : "Markdown needs a blank line before a table, which leaves a gap in Live Preview. On: that line is hidden so the table sits right under the text above; it shows again when the cursor is on it. Display only — the blank line stays in your notes.",
       type: "toggle",
     },
     {

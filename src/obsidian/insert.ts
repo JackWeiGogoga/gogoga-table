@@ -1,7 +1,7 @@
 /** 新建表格：悬停网格选行列数（像 Word、Google 文档）；把选中的文字转成表格 */
 
 import { type App, type Editor, Modal } from "obsidian";
-import { fromTSV } from "../core/clipboard";
+import { splitTextRows } from "../core/text-table";
 import { emptyTable, type Table } from "../core/table";
 import { t } from "../editor/i18n";
 
@@ -85,40 +85,13 @@ export class GridModal extends Modal {
   }
 }
 
-/**
- * 选中的文字转成表格：有制表符按制表符切（从表格软件复制来的），否则按逗号切（CSV，支持双引号）；
- * 第一行当表头，列数按最多的那行补齐
- */
+/** 选中的文字转成表格：怎么分列见 splitTextRows；第一行当表头，列数按最多的那行补齐 */
 export function textToTable(text: string): Table | null {
-  const raw = text.replace(/\r\n?/g, "\n").trim();
-  if (!raw) return null;
-  const rows = raw.includes("\t") ? fromTSV(raw) : raw.split("\n").map(splitCSV);
+  const rows = splitTextRows(text);
   if (!rows.length) return null;
   const width = Math.max(...rows.map((r) => r.length));
   const t = emptyTable(Math.max(2, rows.length), width);
   rows.forEach((row, i) => row.forEach((v, j) => (t.cells[i][j] = v.trim())));
   return t;
-}
-
-function splitCSV(line: string): string[] {
-  const out: string[] = [];
-  let cur = "";
-  let q = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (q) {
-      if (ch === '"' && line[i + 1] === '"') {
-        cur += '"';
-        i++;
-      } else if (ch === '"') q = false;
-      else cur += ch;
-    } else if (ch === '"' && !cur.trim()) q = true;
-    else if (ch === "," || ch === "，") {
-      out.push(cur);
-      cur = "";
-    } else cur += ch;
-  }
-  out.push(cur);
-  return out;
 }
 

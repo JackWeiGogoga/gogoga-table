@@ -4,6 +4,9 @@
  * 颜色全部取 Obsidian 主题变量，换主题、深浅色都跟着变。
  */
 
+/* 样式表加载了的标记：插件启动时检查它，没有就提示 styles.css 没加载 */
+body { --ggt-styles-loaded: 1; }
+
 .ggt {
   --ggt-line: var(--table-border-color, var(--background-modifier-border));
   --ggt-head-bg: rgba(var(--mono-rgb-100), 0.035);
@@ -905,3 +908,5 @@ body.is-mobile .ggt-menu { z-index: 2147483000; backdrop-filter: none; -webkit-b
 .ggt-hbar::-webkit-scrollbar-thumb:hover { background-color: var(--scrollbar-active-thumb-bg, rgba(0, 0, 0, 0.35)); }
 @media print { .ggt-hbar { display: none !important; } }
 
+/* 设置「隐藏表格上方的空行」：表格前面那个空行（Markdown 要求的）不显示，光标在这一行（.cm-active）时照常显示（B站天堂鸟0 的建议） */
+.markdown-source-view.mod-cm6 .cm-content > .cm-line:not(.cm-active):has(> br:only-child):has(+ .ggt-lp.ggt-hide-blank-above) { display: none; }

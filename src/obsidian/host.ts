@@ -30,6 +30,8 @@ export interface TableSettings extends SecretSettings {
   fitCols: boolean;
   /** 表格在页面里居中（默认关，群友提议）：比正文窄的表格放在正中间；比正文宽、撑满页面宽度的照旧 */
   center: boolean;
+  /** 实时预览里藏起表格上面那个空行（Markdown 规定表格前要空一行） */
+  hideBlankAbove: boolean;
   /** 表格样式优先于主题（默认开）：主题给 table / th / td 写了 !important 的边框、底色、文字颜色也压过去 */
   strictStyle: boolean;
   /** 格子左右内边距（像素，默认 10）：嫌格子两边空得多可以调小（#14）；「紧凑」行距时最多 8 */
@@ -54,6 +56,7 @@ export const DEFAULT_SETTINGS: TableSettings = {
   fullWidth: false,
   fitCols: true,
   center: false,
+  hideBlankAbove: false,
   strictStyle: true,
   cellPadX: 10,
   secretLock: 15,
@@ -301,6 +304,7 @@ export function makeFactory(app: App, settings: () => TableSettings, persist: ()
       // 居中要排的是装表格的那层（实时预览的 .ggt-lp、阅读视图的 .ggt-reading），表格自己的外框跟着表格宽度走、贴左放
       const holder = root.parentElement;
       if (holder?.matches(".ggt-lp, .ggt-reading")) holder.toggleClass("ggt-center-host", settings().center);
+      if (holder?.matches(".ggt-lp")) holder.toggleClass("ggt-hide-blank-above", settings().hideBlankAbove);
       const pad = settings().cellPadX;
       if (pad !== 10 && [4, 6, 8].includes(pad)) root.style.setProperty("--ggt-pad-user", `${pad}px`);
       else root.style.removeProperty("--ggt-pad-user");

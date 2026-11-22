@@ -4,6 +4,13 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-11-23
+
+### 新增
+- 设置「隐藏表格上方的空行」（默认关，B 站天堂鸟0 的建议）：Markdown 规定表格前面要空一行，实时预览里会留出一截空白；打开后藏起来，表格紧贴着上面的文字，光标移到这一行时照常显示。只改显示，笔记里的空行还在。
+- 「把选中的文字转成表格」能认更多分列方式（小红书反馈）：两个以上空格、全角空格（AI 对话、网页上复制来的对齐文字），每行列数一样的单个空格，还有带竖线的 Markdown 表格样子的文字。以前只认制表符和逗号。
+- 插件的样式文件 styles.css 没加载时（手动安装漏了这个文件、同步盘没同步过来），启动后弹出提示，说明去哪里检查或者重新安装。以前只会看到表格下面多出一排按钮、每行很高（B 站反馈）。
+
 ## [0.24.1] - 2026-11-22
 
 ### 修复
@@ -405,7 +412,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 ### 新增
 - 第一个版本：实时预览和阅读视图里的 Markdown 表格换成 Notion 风格的表格。点格子编辑，Enter / Tab 跳格，加行加列，行列手柄和右键菜单，拖列宽，七种底色，三套样式和两档行距；手机上点一下编辑、长按出菜单。选一片格子一起设底色、对齐、清空；和 Excel、飞书、网页互相复制粘贴；合并单元格；拖动行列手柄调整顺序；长表格表头吸顶，宽表格左右有滚动提示。下拉填充；表格左上角菜单（单表样式、三线表、标题列、整表对齐、平均分布列宽、撑满页面）；按列排序；复制行列、一次插入多行；勾选框；文字颜色；合计行；状态列；编辑格子时的格式快捷键和 [[ 链接、# 标签补全；插入表格、文字转表格等命令。复制带样式的 HTML。兼容 Advanced Tables 的公式注释和块标识。文件仍是标准 Markdown 表格，列宽、颜色、合并等存在表格下面的一行注释里。
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.24.1...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.25.0...HEAD
+[0.25.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.24.1...0.25.0
 [0.24.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.24.0...0.24.1
 [0.24.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.4...0.24.0
 [0.23.4]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.3...0.23.4
