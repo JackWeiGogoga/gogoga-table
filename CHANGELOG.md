@@ -4,6 +4,20 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-11-24
+
+### Added
+- A "Change master password" item in settings, same as the command of that name (users couldn't find it). It's unavailable until something has been encrypted.
+
+### Changed
+- If the keychain entry you picked doesn't hold the master password, the password prompt now says it wasn't used. Before, it was skipped silently, so users thought the keychain password was the master password and got "Wrong password" when typing it.
+- The password prompt is now titled "Enter master password" instead of "Unlock encrypted content". It also appears when encrypting a column, and the old title made it look like decrypting.
+- Clearer description for "Master password from the keychain": the keychain only remembers your master password and doesn't set or change it, so the saved entry must match the password you set when you first encrypted something.
+
+### Fixed
+- Clicking a list task (`- [ ]`) inside a multi-line cell only ticked it on screen without changing the note, so it went back to unchecked the next time you edited the cell or reopened the note (reported in the user group). Clicking now updates that task in the note and can be undone. Cells that start with `[ ]` work as before.
+- Pressing Shift+Enter at the start or end of colored text showed a stray `</span>` in the editor (reported in the mind map user group; cells behaved the same). The line break now goes outside the color, without leaving an empty color tag behind.
+
 ## [0.25.0] - 2026-11-23
 
 ### Added
@@ -412,7 +426,8 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - First version: Markdown tables in Live Preview and Reading view become Notion-style tables. Click a cell to edit, Enter / Tab to move, add rows and columns, row and column handles plus a right-click menu, drag to resize columns, seven cell backgrounds, three styles and two row spacings; on mobile, tap to edit and long-press for the menu. Select a range to color, align or clear it at once; copy and paste with Excel, Feishu and the web; merge cells; drag row and column handles to reorder; sticky headers on long tables and scroll hints on wide ones. Fill handle; a per-table corner menu (style, three-line style, header column, align all, distribute or fit widths); sort by column; duplicate rows and columns and insert many at once; checkboxes; text colors; total rows; status columns; formatting keys plus [[ link and # tag completion while editing; Insert table and Convert text to table commands. Styled HTML copy. Coexists with Advanced Tables formulas and block ids. Files stay plain Markdown tables, with widths, colors, merges and more in one comment below the table.
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.25.0...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.26.0...HEAD
+[0.26.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.25.0...0.26.0
 [0.25.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.24.1...0.25.0
 [0.24.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.24.0...0.24.1
 [0.24.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.23.4...0.24.0

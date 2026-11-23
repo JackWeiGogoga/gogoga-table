@@ -24,6 +24,7 @@ class PasswordModal extends Modal {
     private readonly hint: string,
     private readonly verify: (password: string) => Promise<boolean>,
     private readonly done: (r: { password: string; hint: string } | null) => void,
+    private readonly keychainWrong = false,
   ) {
     super(app);
   }
@@ -35,6 +36,7 @@ class PasswordModal extends Modal {
     const { contentEl } = this;
     if (setup) contentEl.createEl("p", { text: t("encSetupDesc"), cls: "setting-item-description" });
     else if (this.hint) contentEl.createEl("p", { text: t("encHintIs").replace("{v}", this.hint), cls: "setting-item-description" });
+    if (!setup && this.keychainWrong) contentEl.createEl("p", { text: t("encKeychainWrong"), cls: "ggt-secret-keychain-wrong" });
     const field = (label: string, type: string) => {
       const input = contentEl.createEl("input", { type, cls: "ggt-secret-input" });
       input.placeholder = label;
@@ -112,7 +114,7 @@ export function keychain(app: App): { getSecret(id: string): string | null } | n
 /** 所有表格共用的主密码会话 */
 export function makeSecretBox(app: App, settings: () => SecretSettings, persist: () => void): SecretBox {
   return new SecretBox({
-    ask: (mode, hint, verify) => new Promise((resolve) => new PasswordModal(app, mode, hint, verify, resolve).open()),
+    ask: (mode, hint, verify, keychainWrong) => new Promise((resolve) => new PasswordModal(app, mode, hint, verify, resolve, keychainWrong).open()),
     loadCheck: () => settings().secretCheck ?? null,
     saveCheck: (check) => {
       settings().secretCheck = check;

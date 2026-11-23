@@ -23,6 +23,11 @@ export default class TablePlugin extends Plugin {
     return this.factory?.secrets ?? null;
   }
 
+  /** 更改主密码（命令和设置页共用） */
+  changeMasterPassword(): void {
+    if (this.factory) void changeMasterPassword(this.app, this.factory.secrets, !!this.settings.secretKeychain);
+  }
+
   async onload(): Promise<void> {
     setLanguage(getLanguage());
     this.settings = { ...DEFAULT_SETTINGS, ...((await this.loadData()) as Partial<TableSettings> | null) };
@@ -85,7 +90,7 @@ export default class TablePlugin extends Plugin {
       id: "change-master-password",
       name: t("encRekey"),
       icon: "key-round",
-      callback: () => void changeMasterPassword(this.app, factory.secrets, !!this.settings.secretKeychain),
+      callback: () => this.changeMasterPassword(),
     });
     // 表格操作：作用在最近选中格子的那张表上，可以绑快捷键
     for (const id of TABLE_COMMANDS) {
@@ -270,8 +275,8 @@ function settingSpecs(hasKeychain: boolean): SettingSpec[] {
             key: "secretKeychain" as const,
             name: zh ? "主密码存在钥匙串里" : "Master password from the keychain",
             desc: zh
-              ? "选 Obsidian 钥匙串里存着主密码的那一项，打开加密列时不用再输密码（每台设备各自设置）。和 Meld Encrypt 选同一项，整篇加密、行内加密和表格的加密列就共用一个主密码。不选就每次手动输入。"
-              : "Pick the Obsidian keychain entry that holds your master password, so encrypted columns open without typing it (set this on each device). Pick the same entry in Meld Encrypt to share one master password between whole-note encryption, inline encryption and encrypted columns. Leave empty to type it each time.",
+              ? "钥匙串只是替你记住主密码，不会设置或改掉主密码：主密码是第一次加密时设的那个，所有表格共用一个。在 Obsidian 钥匙串里存一项和它一样的密码再选上，加密、查看时就不用再输（每台设备各自设置）；存的不一样就用不上。和 Meld Encrypt 选同一项，整篇加密、行内加密和表格的加密列就共用一个主密码。不选就每次手动输入。"
+              : "The keychain only remembers your master password; it doesn't set or change it. The master password is the one you set when you first encrypted something, shared by every table. Save the same password as an entry in the Obsidian keychain and pick it here, so encrypting and viewing don't ask for it (set this on each device). A different password won't be used. Pick the same entry in Meld Encrypt to share one master password between whole-note encryption, inline encryption and encrypted columns. Leave empty to type it each time.",
             type: "secret" as const,
           },
         ]
@@ -289,11 +294,27 @@ class TableSettingTab extends PluginSettingTab {
 
   getSettingDefinitions(): SettingDefinitionItem[] {
     // 声明式设置的钥匙串选择框 1.13.2 才有
-    return settingSpecs(!!keychain(this.app) && requireApiVersion("1.13.2")).map((x) => ({
+    const items: SettingDefinitionItem[] = settingSpecs(!!keychain(this.app) && requireApiVersion("1.13.2")).map((x) => ({
       name: x.name,
       desc: x.desc,
       control: x.type === "toggle" ? { type: "toggle", key: x.key } : x.type === "secret" ? { type: "secret", key: x.key } : { type: "dropdown", key: x.key, options: x.options ?? {} },
     }));
+    const r = this.rekeyRow();
+    items.push({ name: r.name, desc: r.desc, action: () => r.run(), disabled: () => !r.ready() });
+    return items;
+  }
+
+  /** 「更改主密码」：命令面板里有，设置页也放一行（群友找不到）。还没设过主密码时不能点 */
+  private rekeyRow() {
+    const zh = t("encRekey") !== "Change master password";
+    return {
+      name: t("encRekey"),
+      desc: zh
+        ? "用新的主密码重新加密所有表格的加密格子（和 Meld Encrypt 用同一个密码加密的行内内容）。要先输一次现在的主密码。还没加密过任何内容时不能用。"
+        : "Re-encrypt every encrypted table cell (and Meld Encrypt inline text using the same password) with a new master password. You'll be asked for the current one first. Not available until something has been encrypted.",
+      ready: () => !!this.plugin.settings.secretCheck,
+      run: () => this.plugin.changeMasterPassword(),
+    };
   }
 
   getControlValue(key: string): unknown {
@@ -319,5 +340,10 @@ class TableSettingTab extends PluginSettingTab {
       else if (x.type === "toggle") row.addToggle((tg) => tg.setValue(this.getControlValue(x.key) as boolean).onChange((v) => this.setControlValue(x.key, v)));
       else row.addDropdown((dd) => dd.addOptions(x.options ?? {}).setValue(this.getControlValue(x.key) as string).onChange((v) => this.setControlValue(x.key, v)));
     }
+    const r = this.rekeyRow();
+    new Setting(containerEl)
+      .setName(r.name)
+      .setDesc(r.desc)
+      .addButton((b) => b.setButtonText(r.name).setDisabled(!r.ready()).onClick(() => r.run()));
   }
 }

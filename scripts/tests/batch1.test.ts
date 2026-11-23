@@ -84,3 +84,19 @@ test("第二批：文字颜色跟着行列走、写回、清除；标题列开�
   assert.deepEqual(setWidths(t, [100, 33.4]).meta.w, [100, 40]);
   assert.deepEqual(parseMetaLine('<!-- gogoga-table: {"headerCol":1,"fg":{"A1":"pink","B2":"blue"}} -->'), { fg: { B2: "blue" } });
 });
+
+import { toggleTask } from "../../src/core/ops";
+
+test("格子里列表待办（- [ ]）：按第几个切换，别的行不动", () => {
+  const t = T([["项目", "状态"], ["甲", "- [ ] 符合<br>- [ ] 不符合"], ["乙", "说明<br>* [x] 已做<br>1. [ ] 一<br>- [/] 进行中"]]);
+  assert.equal(toggleTask(t, 1, 1, 0).cells[1][1], "- [x] 符合\n- [ ] 不符合");
+  assert.equal(toggleTask(t, 1, 1, 1).cells[1][1], "- [ ] 符合\n- [x] 不符合");
+  assert.equal(toggleTask(toggleTask(t, 1, 1, 0), 1, 1, 0).cells[1][1], "- [ ] 符合\n- [ ] 不符合");
+  assert.equal(toggleTask(t, 2, 1, 0).cells[2][1], "说明\n* [ ] 已做\n1. [ ] 一\n- [/] 进行中");
+  assert.equal(toggleTask(t, 2, 1, 1).cells[2][1], "说明\n* [x] 已做\n1. [x] 一\n- [/] 进行中");
+  assert.equal(toggleTask(t, 2, 1, 2).cells[2][1], "说明\n* [x] 已做\n1. [ ] 一\n- [ ] 进行中");
+  // 没有第几个：原表
+  assert.equal(toggleTask(t, 1, 1, 5), t);
+  // 开头的 [ ] 不算列表待办（它走 toggleCheck）
+  assert.equal(toggleTask(T([["a"], ["[ ] 甲<br>- [ ] 乙"]]), 1, 0, 0).cells[1][0], "[ ] 甲\n- [x] 乙");
+});
