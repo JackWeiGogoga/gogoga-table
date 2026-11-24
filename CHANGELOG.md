@@ -4,6 +4,13 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.27.1] - 2026-11-24
+
+### Fixed
+- With the Minimal theme and "Table style over theme" turned off, merging cells down a column made some rows of the next column indented further, so the column didn't line up (feedback from the user group). Minimal removes the left padding of each row's first cell, and in the rows under a merged cell the first cell is the second column. Cell padding is no longer affected by the theme.
+- After selecting cells, clicking outside the table or pressing Esc left the small fill handle at the bottom right of the old selection; it now goes away with the selection.
+- On phones and tablets, dragging the table's handles and resize bar can no longer be taken over by Obsidian's swipe gesture that opens the sidebar.
+
 ## [0.27.0] - 2026-11-24
 
 ### Added
@@ -435,7 +442,8 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - First version: Markdown tables in Live Preview and Reading view become Notion-style tables. Click a cell to edit, Enter / Tab to move, add rows and columns, row and column handles plus a right-click menu, drag to resize columns, seven cell backgrounds, three styles and two row spacings; on mobile, tap to edit and long-press for the menu. Select a range to color, align or clear it at once; copy and paste with Excel, Feishu and the web; merge cells; drag row and column handles to reorder; sticky headers on long tables and scroll hints on wide ones. Fill handle; a per-table corner menu (style, three-line style, header column, align all, distribute or fit widths); sort by column; duplicate rows and columns and insert many at once; checkboxes; text colors; total rows; status columns; formatting keys plus [[ link and # tag completion while editing; Insert table and Convert text to table commands. Styled HTML copy. Coexists with Advanced Tables formulas and block ids. Files stay plain Markdown tables, with widths, colors, merges and more in one comment below the table.
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.27.0...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.27.1...HEAD
+[0.27.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.27.0...0.27.1
 [0.27.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.26.0...0.27.0
 [0.26.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.25.0...0.26.0
 [0.25.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.24.1...0.25.0
