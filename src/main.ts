@@ -230,6 +230,14 @@ function settingSpecs(hasKeychain: boolean): SettingSpec[] {
       type: "toggle",
     },
     {
+      key: "clickEdit",
+      name: zh ? "单击格子直接编辑" : "Edit a cell with a single click",
+      desc: zh
+        ? "用鼠标点一下格子就进入编辑，不用双击。点链接、勾选框、图片照常；拖动选一片、按住 Shift 或 ⌘ 点照常是选格子。手机、平板上本来就是轻点进编辑。"
+        : "Clicking a cell with the mouse starts editing it, no double-click needed. Links, checkboxes and images work as before; dragging, or clicking with Shift or ⌘ held, still selects cells. On phones and tablets a tap already starts editing.",
+      type: "toggle",
+    },
+    {
       key: "crosshair",
       name: zh ? "十字高亮" : "Crosshair highlight",
       desc: zh ? "选中格子时，把它所在的整行和整列铺一层淡色，看大表格不容易串行。「悬停时」跟着鼠标走，鼠标离开表格后回到选中的格子。" : "Tint the whole row and column of the selected cell so large tables are easier to follow. On hover follows the mouse, falling back to the selected cell when the mouse leaves the table.",

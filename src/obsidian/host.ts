@@ -22,6 +22,8 @@ export interface TableSettings extends SecretSettings {
   richEdit: boolean;
   /** 日期列手打的 1/5、2026年1月5日、20260105、今天，提交时换成这一列的写法（默认开） */
   smartDate: boolean;
+  /** 单击格子直接编辑（默认关，B 站衣裳IrKeng）：鼠标点一下就进编辑，不用双击 */
+  clickEdit: boolean;
   /** 阅读视图里表格只读（默认开）：关掉才能在阅读视图里直接改表格 */
   readingReadonly: boolean;
   /** 没设过列宽的表格撑满页面宽度（默认关）：只改显示，不往文件里写列宽 */
@@ -52,6 +54,7 @@ export const DEFAULT_SETTINGS: TableSettings = {
   formatBar: false,
   richEdit: false,
   smartDate: true,
+  clickEdit: false,
   readingReadonly: true,
   fullWidth: false,
   fitCols: true,
@@ -298,6 +301,7 @@ export function makeFactory(app: App, settings: () => TableSettings, persist: ()
       root.dataset.defPreset = settings().preset;
       root.dataset.defDensity = settings().density;
       root.dataset.cross = settings().crosshair;
+      root.dataset.clickEdit = settings().clickEdit ? "1" : "";
       root.dataset.defFull = settings().fullWidth ? "1" : "";
       root.dataset.defFit = settings().fitCols ? "1" : "";
       root.dataset.defStrict = settings().strictStyle ? "1" : "";
