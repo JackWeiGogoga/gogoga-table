@@ -15,6 +15,7 @@ import { canIndent, indentTable } from "../core/indent";
 import { parseTable, type Table } from "../core/table";
 import { clearSearchMark, sameTable, TableEditor } from "../editor/editor";
 import type { TableHostFactory } from "./host";
+import { diagRef } from "./diag-ref";
 
 
 function docLines(doc: Text): string[] {
@@ -174,6 +175,13 @@ function findBarMatch(view: EditorView, tables: DecorationSet | undefined): { ta
   return out;
 }
 
+/** 诊断：表格往编辑器里写了一次（改格子、缩进、删表）。只记哪篇、哪种、改了几处，不记内容 */
+function noteTableWrite(view: EditorView, kind: string, changes: number): void {
+  const d = diagRef.diag;
+  if (!d?.on) return;
+  d.log("table-write", { file: view.state.field(editorInfoField, false)?.file?.path, kind, changes, len: view.state.doc.length });
+}
+
 /** 这个编辑器现在在文件里哪几行：按它在文档里的位置找回所在的表格 */
 function blockAt(view: EditorView, dom: HTMLElement): { block: TableBlock; from: number; to: number } | null {
   let pos: number;
@@ -199,7 +207,9 @@ function writeBack(view: EditorView, dom: HTMLElement, table: Table): void {
   if (old === text) return;
   cursorBesideTable(view, at);
   // 只写回变了的那几个字：Obsidian 背后的原生表格才走局部更新，不整张重建（大表上差几倍）
-  view.dispatch({ changes: diffText(old, text, at.from), userEvent: "input.table" });
+  const changes = diffText(old, text, at.from);
+  view.dispatch({ changes, userEvent: "input.table" });
+  noteTableWrite(view, "cell", changes.length);
 }
 
 /**
@@ -237,7 +247,9 @@ function indentAt(view: EditorView, dom: HTMLElement, dir: 1 | -1): void {
   const next = indentTable(docLines(doc), at.block, dir);
   if (!next) return;
   cursorBesideTable(view, at);
-  view.dispatch({ changes: diffText(doc.toString(), next.join("\n")), userEvent: "input.table" });
+  const changes = diffText(doc.toString(), next.join("\n"));
+  view.dispatch({ changes, userEvent: "input.table" });
+  noteTableWrite(view, dir > 0 ? "indent" : "outdent", changes.length);
 }
 
 /** 删掉整张表（连同下面的注释），表格前后多出来的一个空行也去掉；走编辑器事务，⌘Z 能撤回 */
@@ -255,6 +267,7 @@ function removeTable(view: EditorView, dom: HTMLElement): void {
   const after = to < doc.length ? doc.lineAt(to) : null;
   if (before && after && before.text.trim() === "" && after.text.trim() === "") to = Math.min(doc.length, after.to + 1);
   view.dispatch({ changes: { from, to, insert: "" }, selection: { anchor: from }, userEvent: "delete.table" });
+  noteTableWrite(view, "remove", 1);
   view.focus();
 }
 

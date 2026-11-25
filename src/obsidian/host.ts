@@ -38,6 +38,10 @@ export interface TableSettings extends SecretSettings {
   strictStyle: boolean;
   /** 格子左右内边距（像素，默认 10）：嫌格子两边空得多可以调小（#14）；「紧凑」行距时最多 8 */
   cellPadX: number;
+  /** 更新后右下角提示「已更新到 x.y.z」，带「查看更新内容」按钮（core/whatsnew.ts） */
+  whatsNew: boolean;
+  /** 上次提示过 / 看过的版本 */
+  lastSeenVersion?: string;
   /** 格式栏颜色下拉记住的颜色：上次用的、最近使用（按文字颜色 text / 荧光笔 bg 分开） */
   colorMemory?: { last?: Record<string, string>; recent?: Record<string, string[]> };
 }
@@ -62,6 +66,7 @@ export const DEFAULT_SETTINGS: TableSettings = {
   hideBlankAbove: false,
   strictStyle: true,
   cellPadX: 10,
+  whatsNew: true,
   secretLock: 15,
   secretKeychain: "",
 };

@@ -10,9 +10,16 @@ import { livePreviewTables } from "./obsidian/live-preview";
 import { readingProcessor } from "./obsidian/reading";
 import { changeMasterPassword, keychain } from "./obsidian/secret";
 import type { SecretBox } from "./core/secret-box";
+import type { Diag } from "./core/diag";
+import { createDiag, diagSettingDefinitions, renderDiagSettings, watchMarkdown } from "./core/diag-host";
+import { diagRef } from "./obsidian/diag-ref";
+import { initWhatsNew } from "./core/whatsnew";
+import { WHATS_NEW } from "./whatsnew-data";
 
 export default class TablePlugin extends Plugin {
   settings: TableSettings = { ...DEFAULT_SETTINGS };
+  /** 诊断记录（只在电脑端，见 core/diag.ts）；手机上为 null。gogoga Mind Map 会来看它在不在 */
+  diag: Diag | null = null;
   /** 注册给编辑器的扩展：关掉接管时清空，再 updateOptions，Obsidian 会整个重建（原生表格也回来） */
   private readonly extensions: Extension[] = [];
   private livePreview: Extension | null = null;
@@ -30,7 +37,30 @@ export default class TablePlugin extends Plugin {
 
   async onload(): Promise<void> {
     setLanguage(getLanguage());
-    this.settings = { ...DEFAULT_SETTINGS, ...((await this.loadData()) as Partial<TableSettings> | null) };
+    // 诊断尽早建好：加载、更新插件那一刻也要记进去。Markdown 视图那边的存盘 / 外部改动由表格插件看（脑图见它在就不看）
+    this.diag = createDiag(this.app, this, "table");
+    diagRef.diag = this.diag;
+    this.register(() => (diagRef.diag = null));
+    if (this.diag) watchMarkdown(this.app, this, this.diag, () => true);
+    const saved = (await this.loadData()) as Partial<TableSettings> | null;
+    this.settings = { ...DEFAULT_SETTINGS, ...saved };
+    initWhatsNew(this, {
+      name: "gogoga Table",
+      icon: "table",
+      notes: WHATS_NEW,
+      changelogUrl: {
+        zh: "https://github.com/JackWeiGogoga/gogoga-table/blob/main/CHANGELOG.zh-CN.md",
+        en: "https://github.com/JackWeiGogoga/gogoga-table/blob/main/CHANGELOG.md",
+      },
+      enabled: () => this.settings.whatsNew,
+      lastSeen: () => this.settings.lastSeenVersion,
+      setLastSeen: async (v) => {
+        this.settings.lastSeenVersion = v;
+        await this.saveData(this.settings);
+      },
+      // 之前没存过设置 = 新装：只记版本不弹
+      fresh: saved == null,
+    });
     const factory = makeFactory(this.app, () => this.settings, () => {
       // 连着挑颜色时攒一下再写
       if (this.persistTimer !== null) window.clearTimeout(this.persistTimer);
@@ -269,6 +299,14 @@ function settingSpecs(hasKeychain: boolean): SettingSpec[] {
       type: "toggle",
     },
     {
+      key: "whatsNew",
+      name: zh ? "更新后显示更新内容" : "Show what's new after updating",
+      desc: zh
+        ? "插件更新后，右下角提示一下更新到了哪个版本，带「查看更新内容」按钮，点了才打开，不打断手上的事。命令面板里的「查看更新内容」随时能看。"
+        : "After the plugin updates, a notice in the bottom right says which version it is now, with a button to see what changed. It won't interrupt you. You can also run \"Show what's new\" from the command palette at any time.",
+      type: "toggle",
+    },
+    {
       key: "secretLock",
       name: zh ? "加密列自动锁定" : "Lock encrypted columns after",
       desc: zh
@@ -309,6 +347,9 @@ class TableSettingTab extends PluginSettingTab {
     }));
     const r = this.rekeyRow();
     items.push({ name: r.name, desc: r.desc, action: () => r.run(), disabled: () => !r.ready() });
+    // 诊断（只在电脑端）
+    const diag = diagSettingDefinitions(this.app, this.plugin.diag);
+    if (diag.length) items.push({ type: "group", heading: getLanguage().toLowerCase().startsWith("zh") ? "诊断" : "Diagnostics", items: diag });
     return items;
   }
 
@@ -353,5 +394,9 @@ class TableSettingTab extends PluginSettingTab {
       .setName(r.name)
       .setDesc(r.desc)
       .addButton((b) => b.setButtonText(r.name).setDisabled(!r.ready()).onClick(() => r.run()));
+    if (this.plugin.diag) {
+      new Setting(containerEl).setName(getLanguage().toLowerCase().startsWith("zh") ? "诊断" : "Diagnostics").setHeading();
+      renderDiagSettings(this.app, this.plugin.diag, containerEl);
+    }
   }
 }

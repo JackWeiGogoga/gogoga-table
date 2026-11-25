@@ -4,6 +4,12 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-11-25
+
+### Added
+- Diagnostics (desktop only, Settings → "Diagnostics"): if a note suddenly becomes empty, loses a large part or looks garbled, copies from before and after plus recent read/write events are saved on this computer; if it doesn't look like your own edit, a notice offers to restore it as a new note. Day to day only events are kept in memory, never note content; everything stays in Obsidian's app data folder outside the vault, never uploaded and untouched by git or cloud sync. Table write-backs are noted too (how many changes, not the content). "Detailed diagnostics" and "Export diagnostics" help send a problem to the developer (reports of notes being garbled or emptied).
+- What's new after updating: after the plugin updates, a notice in the bottom right says which version it is now; click "What's new" to see what changed. If you skipped a few versions it shows once, listing all of them. Turn it off in settings, or run "Show what's new" from the command palette any time.
+
 ## [0.27.1] - 2026-11-24
 
 ### Fixed
@@ -442,7 +448,8 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - First version: Markdown tables in Live Preview and Reading view become Notion-style tables. Click a cell to edit, Enter / Tab to move, add rows and columns, row and column handles plus a right-click menu, drag to resize columns, seven cell backgrounds, three styles and two row spacings; on mobile, tap to edit and long-press for the menu. Select a range to color, align or clear it at once; copy and paste with Excel, Feishu and the web; merge cells; drag row and column handles to reorder; sticky headers on long tables and scroll hints on wide ones. Fill handle; a per-table corner menu (style, three-line style, header column, align all, distribute or fit widths); sort by column; duplicate rows and columns and insert many at once; checkboxes; text colors; total rows; status columns; formatting keys plus [[ link and # tag completion while editing; Insert table and Convert text to table commands. Styled HTML copy. Coexists with Advanced Tables formulas and block ids. Files stay plain Markdown tables, with widths, colors, merges and more in one comment below the table.
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.27.1...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.28.0...HEAD
+[0.28.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.27.1...0.28.0
 [0.27.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.27.0...0.27.1
 [0.27.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.26.0...0.27.0
 [0.26.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.25.0...0.26.0

@@ -177,6 +177,17 @@ The table processing itself is fast: on 2,000 rows × 20 columns, parsing, writi
 - When exporting to PDF, or exporting a note to an image with the Export Image plugin, tables look the same as in the note (read-only).
 - Items other plugins add to the right-click menu (such as adjustable-media's "Wrap in a layout") are merged into the table's own menu, at the end, instead of a second menu popping up.
 
+## Diagnostics and privacy
+
+Desktop only. Notes are occasionally damaged by sync tools, git or an editor merge (suddenly empty, a large part gone, text spliced together), and afterwards it's hard to tell who wrote what. So the plugin keeps a little evidence on your computer:
+
+- **Keep diagnostics when a note goes wrong** (on by default): recent read/write events are kept in memory — time, which note, length, a hash and how many lines changed, **never the note content** — and nothing is written to disk. Only when a note suddenly becomes empty, loses over 30% at once or looks garbled are copies from before and after saved along with those events. If it doesn't look like your own edit, a notice appears with a one-click "Restore as a new note".
+- **Detailed diagnostics** (off by default): turn on when the developer asks; every read/write event is written to a log file, and it turns itself off after 7 days.
+- **Everything stays on your computer**, in Obsidian's app data folder (`~/Library/Application Support/obsidian/gogoga-diagnostics/` on macOS, `%APPDATA%\obsidian\gogoga-diagnostics\` on Windows) — outside your vault, untouched by git or cloud sync. The plugin never uploads anything.
+- **You decide what to share**: Settings → "Diagnostics" lets you turn it off, clear it, open the folder, or export a bundle to send to the developer, optionally without note content and with file names hidden.
+
+gogoga Mind Map and gogoga Table share the same records and switches.
+
 ## Community
 
 Bugs and feature requests: please open an [issue](https://github.com/JackWeiGogoga/gogoga-table/issues) with a screenshot or recording and the version. Chinese-speaking users can also join the WeChat group: add `JackWeiGogoga` with the note “gogoga”, or scan the QR code on the [community page](https://obsidian.gogoga.top/en/community/).

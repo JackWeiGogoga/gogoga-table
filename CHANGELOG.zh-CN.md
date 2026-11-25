@@ -4,6 +4,12 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-11-25
+
+### 新增
+- 诊断记录（只在电脑端，设置 →「诊断」）：笔记突然变空、被大量删减或疑似被拼坏时，自动在本机保存变化前后的副本和最近的读写事件，看起来不是你自己改的会弹提示，可以一键恢复为新笔记。平时只在内存里记事件，不含笔记内容；全部存在库外的 Obsidian 应用数据目录，不上传、不被 git 或网盘同步。表格写回也会记一笔（只记改了几处，不记内容）。另有「详细诊断」和「导出诊断包」，方便把问题发给开发者排查（群友反馈笔记被写坏、清空）。
+- 更新后提示更新内容：插件更新后右下角提示一下更新到了哪个版本，点「查看更新内容」看这次改了什么；隔了几版才打开也只提示一次，列出这期间的全部版本。不想看可以在设置里关掉，命令面板的「查看更新内容」随时能看。
+
 ## [0.27.1] - 2026-11-24
 
 ### 修复
@@ -442,7 +448,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 ### 新增
 - 第一个版本：实时预览和阅读视图里的 Markdown 表格换成 Notion 风格的表格。点格子编辑，Enter / Tab 跳格，加行加列，行列手柄和右键菜单，拖列宽，七种底色，三套样式和两档行距；手机上点一下编辑、长按出菜单。选一片格子一起设底色、对齐、清空；和 Excel、飞书、网页互相复制粘贴；合并单元格；拖动行列手柄调整顺序；长表格表头吸顶，宽表格左右有滚动提示。下拉填充；表格左上角菜单（单表样式、三线表、标题列、整表对齐、平均分布列宽、撑满页面）；按列排序；复制行列、一次插入多行；勾选框；文字颜色；合计行；状态列；编辑格子时的格式快捷键和 [[ 链接、# 标签补全；插入表格、文字转表格等命令。复制带样式的 HTML。兼容 Advanced Tables 的公式注释和块标识。文件仍是标准 Markdown 表格，列宽、颜色、合并等存在表格下面的一行注释里。
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.27.1...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.28.0...HEAD
+[0.28.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.27.1...0.28.0
 [0.27.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.27.0...0.27.1
 [0.27.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.26.0...0.27.0
 [0.26.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.25.0...0.26.0
