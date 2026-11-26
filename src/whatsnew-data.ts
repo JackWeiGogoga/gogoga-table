@@ -1,6 +1,12 @@
 // 构建时由 scripts/gen-whatsnew.mjs 从 CHANGELOG 生成，别直接改
 export const WHATS_NEW: { version: string; date: string; zh: string; en: string }[] = [
  {
+  "version": "0.29.0",
+  "date": "2026-11-26",
+  "zh": "### 改进\n- 表格菜单里不能用的项不再只是灰着、不说原因（B 站反馈，以为是收费版才能用）。没东西可清的「所有列恢复自动宽度」「清除所有颜色」「自动列宽」「清空内容」「不合计」不再出现，等设过列宽、上过色、写过字、设过合计才有；「增加缩进」「减少缩进」只显示能用的那个。条件不直观的（表头行数、折叠表格、合并单元格、排序、复制表头行、多选时加勾选框）还是灰的，但鼠标停上去会说明原因，点一下也会弹提示，手机上同样能看到。\n- 「更新内容」窗口底部加了一行支持说明和「请我喝杯咖啡」按钮（打开爱发电），旁边「好的」关窗。只在这个窗口里出现，不另外弹。\n\n### 修复\n- 用模板新建笔记（Templater、首页看板、日记插件）时，诊断会误报「内容一次少了三成以上」：模板里的 `<% … %>` 换成日期、链接后变短了。现在模板展开不算删减；同时真删掉了正文的照样会提示。",
+  "en": "### Changed\n- Menu items that can't be used no longer just sit there greyed out without a reason (reported on Bilibili: a user thought they were paid features). \"Auto width for all columns\", \"Clear all colors\", \"Auto width\", \"Clear contents\" and \"No total\" only appear when there's something to reset or clear; of \"Indent\" and \"Outdent\" only the one that applies is shown. Items whose conditions aren't obvious (header rows, fold table, merge cells, sort, duplicate the header row, checkbox with several cells selected) are still greyed out, but hovering shows why and clicking shows a notice, so it works on phones too.\n- The \"What's new\" window now ends with a short note and a \"Buy me a coffee\" button (opens afdian), next to \"Got it\" to close it. It only appears in that window, never as a separate popup.\n\n### Fixed\n- Creating a note from a template (Templater, a home dashboard, a daily-notes plugin) could trigger a false diagnostics warning that the note lost over 30% of its content, because `<% … %>` was replaced with shorter dates and links. Template expansion no longer counts as a loss; if real text disappears at the same time it still warns."
+ },
+ {
   "version": "0.28.0",
   "date": "2026-11-25",
   "zh": "### 新增\n- 诊断记录（只在电脑端，设置 →「诊断」）：笔记突然变空、被大量删减或疑似被拼坏时，自动在本机保存变化前后的副本和最近的读写事件，看起来不是你自己改的会弹提示，可以一键恢复为新笔记。平时只在内存里记事件，不含笔记内容；全部存在库外的 Obsidian 应用数据目录，不上传、不被 git 或网盘同步。表格写回也会记一笔（只记改了几处，不记内容）。另有「详细诊断」和「导出诊断包」，方便把问题发给开发者排查（群友反馈笔记被写坏、清空）。\n- 更新后提示更新内容：插件更新后右下角提示一下更新到了哪个版本，点「查看更新内容」看这次改了什么；隔了几版才打开也只提示一次，列出这期间的全部版本。不想看可以在设置里关掉，命令面板的「查看更新内容」随时能看。",
@@ -53,11 +59,5 @@ export const WHATS_NEW: { version: string; date: string; zh: string; en: string 
   "date": "2026-11-20",
   "zh": "### 修复\n- 开着「编辑格子时直接显示格式」时，编辑居中、右对齐的格子，字会往左偏一截，看起来像对齐失效了（B站反馈）：Obsidian 给编辑器的滚动条预留了位置，格子里的编辑框右边空出 15px。现在编辑框撑满整格，编辑时和查看时位置一样。",
   "en": "### Fixed\n- With \"Show formatting while editing a cell\" on, text in centered and right-aligned cells shifted left while editing, so alignment looked broken (reported on Bilibili): Obsidian reserves room for the editor's scrollbar, which left 15px empty on the right of the cell editor. The editor now fills the cell, so text sits in the same place while editing as when viewing."
- },
- {
-  "version": "0.23.2",
-  "date": "2026-11-20",
-  "zh": "### 修复\n- 格式化插件（比如 Linter 的「表格前后空行」）在表格和下面的注释之间插了空行后，合并单元格、颜色、列宽这些设置全不见了（B站反馈）：注释要紧贴着表格才认。现在中间隔着空行也认，改表格时空行原样留着，不会和格式化插件来回改。\n- 用 Advanced PDF Export、Beautiful PDF 这类插件导出 PDF 时，合并单元格、格子颜色没了（B站反馈）。它们把笔记渲染到一块看不见的地方再拿去打印，以前插件不管那里的表格；现在在那里的表格上补好合并和颜色，表格仍是原生的，不带按钮，换了它们的样式也能正常显示。",
-  "en": "### Fixed\n- When a formatter (such as Linter's blank lines around tables) put a blank line between a table and the comment below it, merged cells, colors and column widths were all lost (reported on Bilibili): the comment was only read when it sat right under the table. It is now read with blank lines in between too, and they stay as they are when you edit the table, so the plugin and the formatter don't keep rewriting each other.\n- Exporting with plugins such as Advanced PDF Export and Beautiful PDF lost merged cells and cell colors (reported on Bilibili). They render the note somewhere hidden and print that, and the plugin used to leave tables there alone. Those tables now get their merges and colors filled in; they stay plain tables without buttons, so they show correctly with those plugins' own styles."
  }
 ];

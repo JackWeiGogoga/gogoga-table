@@ -4,6 +4,15 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-11-26
+
+### Changed
+- Menu items that can't be used no longer just sit there greyed out without a reason (reported on Bilibili: a user thought they were paid features). "Auto width for all columns", "Clear all colors", "Auto width", "Clear contents" and "No total" only appear when there's something to reset or clear; of "Indent" and "Outdent" only the one that applies is shown. Items whose conditions aren't obvious (header rows, fold table, merge cells, sort, duplicate the header row, checkbox with several cells selected) are still greyed out, but hovering shows why and clicking shows a notice, so it works on phones too.
+- The "What's new" window now ends with a short note and a "Buy me a coffee" button (opens afdian), next to "Got it" to close it. It only appears in that window, never as a separate popup.
+
+### Fixed
+- Creating a note from a template (Templater, a home dashboard, a daily-notes plugin) could trigger a false diagnostics warning that the note lost over 30% of its content, because `<% … %>` was replaced with shorter dates and links. Template expansion no longer counts as a loss; if real text disappears at the same time it still warns.
+
 ## [0.28.0] - 2026-11-25
 
 ### Added
@@ -448,7 +457,8 @@ All notable changes to gogoga Table are listed here. The format follows [Keep a 
 ### Added
 - First version: Markdown tables in Live Preview and Reading view become Notion-style tables. Click a cell to edit, Enter / Tab to move, add rows and columns, row and column handles plus a right-click menu, drag to resize columns, seven cell backgrounds, three styles and two row spacings; on mobile, tap to edit and long-press for the menu. Select a range to color, align or clear it at once; copy and paste with Excel, Feishu and the web; merge cells; drag row and column handles to reorder; sticky headers on long tables and scroll hints on wide ones. Fill handle; a per-table corner menu (style, three-line style, header column, align all, distribute or fit widths); sort by column; duplicate rows and columns and insert many at once; checkboxes; text colors; total rows; status columns; formatting keys plus [[ link and # tag completion while editing; Insert table and Convert text to table commands. Styled HTML copy. Coexists with Advanced Tables formulas and block ids. Files stay plain Markdown tables, with widths, colors, merges and more in one comment below the table.
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.28.0...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.29.0...HEAD
+[0.29.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.28.0...0.29.0
 [0.28.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.27.1...0.28.0
 [0.27.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.27.0...0.27.1
 [0.27.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.26.0...0.27.0
