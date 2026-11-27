@@ -24,6 +24,7 @@ import { fromTSV, sourceAttr, toHTML, toTSV } from "../core/clipboard";
 import { type InlineFormat } from "../core/format";
 import { applyFormat } from "../core/format-apply";
 import { type CellInput, CodeMirrorInput, type Edge, TextareaInput } from "./cell-input";
+import { hbarBottom } from "./hbar-position";
 import { isSealed } from "../core/secret";
 import type { SecretBox } from "../core/secret-box";
 
@@ -763,7 +764,14 @@ export class TableEditor {
     bar.classList.add("is-shown");
     bar.style.left = `${Math.round(left)}px`;
     bar.style.width = `${Math.round(w)}px`;
-    bar.style.top = `${Math.round(bottom - bar.offsetHeight)}px`;
+    const status = this.root.ownerDocument.querySelector<HTMLElement>(".status-bar");
+    let statusRect: DOMRect | null = null;
+    if (status) {
+      const rect = status.getBoundingClientRect();
+      const style = win.getComputedStyle(status);
+      if (style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0) statusRect = rect;
+    }
+    bar.style.top = `${Math.round(hbarBottom(left, right, bottom, bar.offsetHeight, statusRect) - bar.offsetHeight)}px`;
     const target = (sc.scrollLeft / Math.max(1, sc.scrollWidth - sc.clientWidth)) * Math.max(0, bar.scrollWidth - bar.clientWidth);
     if (Math.abs(bar.scrollLeft - target) > 1) {
       this.hbarSync = true;
