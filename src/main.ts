@@ -8,7 +8,7 @@ import { canPasteTableAt, gridToTable, insertTableAtSelection, pastedGrid, paste
 import { DEFAULT_SETTINGS, makeFactory, type TableHostFactory, type TableSettings } from "./obsidian/host";
 import { livePreviewTables } from "./obsidian/live-preview";
 import { readingProcessor } from "./obsidian/reading";
-import { changeMasterPassword, keychain } from "./obsidian/secret";
+import { changeMasterPassword, forgetMasterPassword, keychain } from "./obsidian/secret";
 import type { SecretBox } from "./core/secret-box";
 import type { Diag } from "./core/diag";
 import { createDiag, diagSettingDefinitions, renderDiagSettings, watchMarkdown } from "./core/diag-host";
@@ -33,6 +33,11 @@ export default class TablePlugin extends Plugin {
   /** 更改主密码（命令和设置页共用） */
   changeMasterPassword(): void {
     if (this.factory) void changeMasterPassword(this.app, this.factory.secrets, !!this.settings.secretKeychain);
+  }
+
+  /** 忘了主密码，重新设置（命令和设置页共用） */
+  forgetMasterPassword(): void {
+    if (this.factory) void forgetMasterPassword(this.app, this.factory.secrets, !!this.settings.secretKeychain);
   }
 
   async onload(): Promise<void> {
@@ -121,6 +126,16 @@ export default class TablePlugin extends Plugin {
       name: t("encRekey"),
       icon: "key-round",
       callback: () => this.changeMasterPassword(),
+    });
+    this.addCommand({
+      id: "forget-master-password",
+      name: t("encForget"),
+      icon: "key-square",
+      checkCallback: (checking) => {
+        if (!this.settings.secretCheck) return false;
+        if (!checking) this.forgetMasterPassword();
+        return true;
+      },
     });
     // 表格操作：作用在最近选中格子的那张表上，可以绑快捷键
     for (const id of TABLE_COMMANDS) {
@@ -347,6 +362,8 @@ class TableSettingTab extends PluginSettingTab {
     }));
     const r = this.rekeyRow();
     items.push({ name: r.name, desc: r.desc, action: () => r.run(), disabled: () => !r.ready() });
+    const f = this.forgetRow();
+    items.push({ name: f.name, desc: f.desc, action: () => f.run(), disabled: () => !f.ready() });
     // 诊断（只在电脑端）
     const diag = diagSettingDefinitions(this.app, this.plugin.diag);
     if (diag.length) items.push({ type: "group", heading: getLanguage().toLowerCase().startsWith("zh") ? "诊断" : "Diagnostics", items: diag });
@@ -363,6 +380,19 @@ class TableSettingTab extends PluginSettingTab {
         : "Re-encrypt every encrypted table cell (and Meld Encrypt inline text using the same password) with a new master password. You'll be asked for the current one first. Not available until something has been encrypted.",
       ready: () => !!this.plugin.settings.secretCheck,
       run: () => this.plugin.changeMasterPassword(),
+    };
+  }
+
+  /** 「忘记主密码，重新设置」：同样还没设过主密码时不能点 */
+  private forgetRow() {
+    const zh = t("encRekey") !== "Change master password";
+    return {
+      name: t("encForget"),
+      desc: zh
+        ? "想不起现在的主密码时用：不用输旧密码，直接设一个新的。用旧主密码加密的内容会原样留在笔记里，但再也解不开。"
+        : "If you can't remember the current master password, set a new one without it. Anything encrypted with the old password stays in your notes but can't be decrypted anymore.",
+      ready: () => !!this.plugin.settings.secretCheck,
+      run: () => this.plugin.forgetMasterPassword(),
     };
   }
 
@@ -394,6 +424,11 @@ class TableSettingTab extends PluginSettingTab {
       .setName(r.name)
       .setDesc(r.desc)
       .addButton((b) => b.setButtonText(r.name).setDisabled(!r.ready()).onClick(() => r.run()));
+    const f = this.forgetRow();
+    new Setting(containerEl)
+      .setName(f.name)
+      .setDesc(f.desc)
+      .addButton((b) => b.setButtonText(t("encForgetGo")).setDisabled(!f.ready()).onClick(() => f.run()));
     if (this.plugin.diag) {
       new Setting(containerEl).setName(getLanguage().toLowerCase().startsWith("zh") ? "诊断" : "Diagnostics").setHeading();
       renderDiagSettings(this.app, this.plugin.diag, containerEl);

@@ -25,6 +25,8 @@ class PasswordModal extends Modal {
     private readonly verify: (password: string) => Promise<boolean>,
     private readonly done: (r: { password: string; hint: string } | null) => void,
     private readonly keychainWrong = false,
+    /** unlock 时弹窗里的「忘了主密码？」：关掉弹窗（当取消）后调它 */
+    private readonly onForgot?: () => void,
   ) {
     super(app);
   }
@@ -47,6 +49,15 @@ class PasswordModal extends Modal {
     const pw2 = setup ? field(t("encPassword2"), "password") : null;
     const hint = setup ? field(t("encHint"), "text") : null;
     const error = contentEl.createDiv({ cls: "ggt-secret-error" });
+    if (!setup && this.onForgot) {
+      const forgot = this.onForgot;
+      const link = contentEl.createEl("a", { text: t("encForgotLink"), cls: "ggt-secret-forgot", href: "#" });
+      link.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        this.close();
+        window.setTimeout(forgot, 0);
+      });
+    }
     let busy = false;
     const submit = async () => {
       if (busy) return;
@@ -113,8 +124,22 @@ export function keychain(app: App): { getSecret(id: string): string | null } | n
 
 /** 所有表格共用的主密码会话 */
 export function makeSecretBox(app: App, settings: () => SecretSettings, persist: () => void): SecretBox {
-  return new SecretBox({
-    ask: (mode, hint, verify, keychainWrong) => new Promise((resolve) => new PasswordModal(app, mode, hint, verify, resolve, keychainWrong).open()),
+  const box: SecretBox = new SecretBox({
+    ask: (mode, hint, verify, keychainWrong) =>
+      new Promise((resolve) =>
+        new PasswordModal(app, mode, hint, verify, resolve, keychainWrong, () => void forgetMasterPassword(app, box, !!settings().secretKeychain)).open(),
+      ),
+    findSamples: async () => {
+      // 库里已有的密文：凑够几段就停（大库不全读），salt 去重交给 SecretBox
+      const out: string[] = [];
+      for (const f of app.vault.getMarkdownFiles()) {
+        const text = await app.vault.cachedRead(f);
+        if (!text.includes("🔐")) continue;
+        out.push(...findSecrets(text));
+        if (out.length >= 50) break;
+      }
+      return out;
+    },
     loadCheck: () => settings().secretCheck ?? null,
     saveCheck: (check) => {
       settings().secretCheck = check;
@@ -135,6 +160,30 @@ export function makeSecretBox(app: App, settings: () => SecretSettings, persist:
       return () => window.clearTimeout(id);
     },
   });
+  return box;
+}
+
+/**
+ * 忘了主密码：不用旧密码，重新设一个。先数一遍库里的加密内容、说清楚它们会再也解不开，确认后再设新密码。
+ * 笔记一个字都不改（旧密文原样留着，想起旧密码还能用 Meld Encrypt 之类解开）
+ */
+export async function forgetMasterPassword(app: App, box: SecretBox, keychainUsed: boolean): Promise<void> {
+  await saveOpenNotes(app);
+  let n = 0;
+  let files = 0;
+  for (const f of app.vault.getMarkdownFiles()) {
+    const text = await app.vault.read(f);
+    if (!text.includes("🔐")) continue;
+    const segs = new Set(findSecrets(text)).size;
+    if (segs) {
+      n += segs;
+      files++;
+    }
+  }
+  const msg = n ? t("encForgetConfirm").replace("{n}", String(n)).replace("{f}", String(files)) : t("encForgetConfirmEmpty");
+  if (!(await confirmBox(app, msg, t("encForgetGo")))) return;
+  if (!(await box.reset())) return;
+  new Notice(t("encForgetDone") + (keychainUsed ? " " + t("encRekeyKeychain") : ""), 10000);
 }
 
 /**

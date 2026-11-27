@@ -1,6 +1,12 @@
 // 构建时由 scripts/gen-whatsnew.mjs 从 CHANGELOG 生成，别直接改
 export const WHATS_NEW: { version: string; date: string; zh: string; en: string }[] = [
  {
+  "version": "0.30.0",
+  "date": "2026-11-27",
+  "zh": "### 新增\n- 忘了主密码可以重新设置（群友反馈：忘了主密码，按提示怎么输都不对）。输入主密码的弹框里点「忘了主密码？」，或者用命令「忘记主密码，重新设置」（设置页也有这一行），不用输旧密码就能设一个新的。开始前会说明库里有几篇笔记、几段加密内容会再也解不开；确认后笔记一个字都不改，旧的加密内容原样留着，只是新主密码解不开。之后加密的内容都用新主密码。用了钥匙串的，记得把钥匙串里存的也改成新密码。\n\n### 修复\n- 换了设备、重装插件后插件设置没同步过来时，在一张还没加密过的表里加密一列，会弹「设置主密码」，输了别的密码就和原来加密的内容对不上了。现在会先找库里已有的加密内容，有的话弹「输入主密码」，要输原来的主密码（能解开库里已有内容的密码）才行。",
+  "en": "### Added\n- You can now set a new master password if you forgot the old one (reported in the user group: a forgotten master password and no way past the prompt). Click \"Forgot the master password?\" in the password prompt, or run \"Forgot master password, set a new one\" (also in settings), to set a new one without entering the old one. Before anything changes it tells you how many encrypted items in how many notes will no longer open. Your notes aren't modified: the old encrypted text stays as it is, the new password just can't open it. Everything you encrypt afterwards uses the new password. If you use the keychain, update the saved password there too.\n\n### Fixed\n- On a new device, or after reinstalling the plugin without its settings, encrypting a column in a table with no encrypted cells asked you to set a master password, so a different password there wouldn't match what you had already encrypted. It now looks for existing encrypted content in the vault first and, if there is any, asks for your master password instead (one that opens that content)."
+ },
+ {
   "version": "0.29.0",
   "date": "2026-11-26",
   "zh": "### 改进\n- 表格菜单里不能用的项不再只是灰着、不说原因（B 站反馈，以为是收费版才能用）。没东西可清的「所有列恢复自动宽度」「清除所有颜色」「自动列宽」「清空内容」「不合计」不再出现，等设过列宽、上过色、写过字、设过合计才有；「增加缩进」「减少缩进」只显示能用的那个。条件不直观的（表头行数、折叠表格、合并单元格、排序、复制表头行、多选时加勾选框）还是灰的，但鼠标停上去会说明原因，点一下也会弹提示，手机上同样能看到。\n- 「更新内容」窗口底部加了一行支持说明和「请我喝杯咖啡」按钮（打开爱发电），旁边「好的」关窗。只在这个窗口里出现，不另外弹。\n\n### 修复\n- 用模板新建笔记（Templater、首页看板、日记插件）时，诊断会误报「内容一次少了三成以上」：模板里的 `<% … %>` 换成日期、链接后变短了。现在模板展开不算删减；同时真删掉了正文的照样会提示。",
@@ -53,11 +59,5 @@ export const WHATS_NEW: { version: string; date: string; zh: string; en: string 
   "date": "2026-11-21",
   "zh": "### 修复\n- 手机、平板上表格宽时整页不会再跟着左右滑：加列的加号收进正文里，不再伸出页面边缘。\n- iPhone、iPad 上表格菜单（长按格子、表格左上角）看得见却点不动，点下去落到了后面的格子或正文上，只有菜单刚好盖在表格外面的那几项偶尔能用（小红书反馈「删除行列只有最后一行一列才有用」）。现在菜单、格式栏、补全列表、日历在手机上都能正常点。\n- iPhone、iPad 上调列宽的把手跑到了表格最左边，一拖就拉出了 Obsidian 的左侧栏，列宽很难改（小红书反馈）。现在把手在选中那一列的右边线上，拖动时也不会再带出侧栏。\n- 手机、平板上编辑着一个空格子时长按，只出系统的「粘贴、选择、全选」，出不来表格菜单（小红书反馈）。现在空格子里长按出表格菜单；有字的格子照旧交给系统（放光标、选字）。",
   "en": "### Fixed\n- On phones and tablets, a wide table no longer makes the whole page slide sideways: the add-column button now sits inside the page margin instead of poking past it.\n- On iPhone and iPad, table menus (long-pressing a cell, the table corner button) showed up but couldn't be tapped: taps went through to the cell or note behind them, so only items that happened to sit outside the table sometimes worked (reported on Xiaohongshu). Menus, the format bar, suggestions and the date picker now respond to taps on phones and tablets.\n- On iPhone and iPad, the column-width handle sat at the table's left edge, so dragging it opened Obsidian's left sidebar and resizing columns was hard (reported on Xiaohongshu). The handle now sits on the right edge of the selected column, and dragging it no longer pulls out the sidebar.\n- On phones and tablets, long-pressing an empty cell while editing it showed only the system's Paste / Select / Select All menu instead of the table menu (reported on Xiaohongshu). An empty cell now opens the table menu; cells with text still get the system long-press for placing the cursor and selecting text."
- },
- {
-  "version": "0.23.3",
-  "date": "2026-11-20",
-  "zh": "### 修复\n- 开着「编辑格子时直接显示格式」时，编辑居中、右对齐的格子，字会往左偏一截，看起来像对齐失效了（B站反馈）：Obsidian 给编辑器的滚动条预留了位置，格子里的编辑框右边空出 15px。现在编辑框撑满整格，编辑时和查看时位置一样。",
-  "en": "### Fixed\n- With \"Show formatting while editing a cell\" on, text in centered and right-aligned cells shifted left while editing, so alignment looked broken (reported on Bilibili): Obsidian reserves room for the editor's scrollbar, which left 15px empty on the right of the cell editor. The editor now fills the cell, so text sits in the same place while editing as when viewing."
  }
 ];

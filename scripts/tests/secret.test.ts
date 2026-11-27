@@ -247,3 +247,72 @@ test("换主密码：旧密文换成新密码的（写法、提示照旧，β �
   assert.equal(await box.open(a2), "甲");
   assert.equal(await decryptText("new", await box.seal("丙")), "丙");
 });
+
+test("忘了主密码重新设置：不用旧密码，换掉校验密文；旧格子留着但解不开，新格子用新密码", async () => {
+  const first = fakeIO(["forgotten"]);
+  const box1 = new SecretBox(first.io);
+  await box1.unlock();
+  const old = await box1.seal("旧内容");
+
+  // 想不起来，直接重新设置（没解锁也能做）
+  const { io, log } = fakeIO(["fresh"]);
+  log.check = first.log.check;
+  const box = new SecretBox(io);
+  assert.equal(await box.reset(), true);
+  assert.deepEqual(log.asks, ["setup"]);
+  assert.equal(box.unlocked, true);
+  assert.notEqual(log.check, first.log.check);
+  assert.equal(parseSecret(log.check!)?.hint, "猫的名字");
+  assert.equal(await decryptText("fresh", log.check!), "gogoga-table");
+  await box.openAll([old]);
+  assert.equal(box.peek(old), null, "旧格子新密码解不开");
+  assert.equal(old.length > 0 && isSealed(old), true, "旧密文没动");
+  assert.equal(await decryptText("fresh", await box.seal("新内容")), "新内容");
+  // 下次解锁按新的校验密文核对
+  const again = fakeIO(["forgotten", "fresh"]);
+  again.log.check = log.check;
+  assert.equal(await new SecretBox(again.io).unlock(), true);
+  assert.equal(again.log.wrongTries, 1);
+
+  // 取消：校验密文和锁的状态都不变
+  const cancel = fakeIO([null]);
+  cancel.log.check = log.check;
+  const box3 = new SecretBox(cancel.io);
+  assert.equal(await box3.reset(), false);
+  assert.equal(cancel.log.check, log.check);
+  assert.equal(box3.unlocked, false);
+});
+
+test("没有校验密文、要解的格子里也没密文（新设备上加密一列）：拿库里已有的密文核对，不会把主密码设成别的", async () => {
+  const other = await encryptText("另一个密码", "x");
+  let found = 0;
+  const { io, log } = fakeIO(["new one", "correct horse"]);
+  io.findSamples = async () => {
+    found++;
+    return [other, MELD_HIDDEN, MELD_HIDDEN];
+  };
+  const box = new SecretBox(io);
+  assert.equal(await box.unlock(["明文"]), true);
+  assert.equal(found, 1);
+  assert.deepEqual(log.asks, ["unlock"], "弹的是输入主密码，不是设置");
+  assert.equal(log.wrongTries, 1, "库里没有一段能解开的密码不收");
+  assert.ok(log.check, "补了校验密文");
+  assert.equal(await decryptText("correct horse", log.check!), "gogoga-table");
+
+  // 别的密码（Meld 用了另一个密码）也能当主密码：能解开库里任何一段就算对
+  const two = fakeIO(["另一个密码"]);
+  two.io.findSamples = async () => [MELD_HIDDEN, other];
+  assert.equal(await new SecretBox(two.io).unlock(), true);
+
+  // 有校验密文：不扫库
+  const three = fakeIO(["correct horse"]);
+  three.log.check = log.check;
+  three.io.findSamples = async () => assert.fail("有校验密文就不扫库");
+  assert.equal(await new SecretBox(three.io).unlock(), true);
+
+  // 库里真没有密文：照常设置
+  const four = fakeIO(["first"]);
+  four.io.findSamples = async () => [];
+  assert.equal(await new SecretBox(four.io).unlock(), true);
+  assert.deepEqual(four.log.asks, ["setup"]);
+});
