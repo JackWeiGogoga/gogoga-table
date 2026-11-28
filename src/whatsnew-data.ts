@@ -1,6 +1,12 @@
 // 构建时由 scripts/gen-whatsnew.mjs 从 CHANGELOG 生成，别直接改
 export const WHATS_NEW: { version: string; date: string; zh: string; en: string }[] = [
  {
+  "version": "0.31.1",
+  "date": "2026-11-28",
+  "zh": "### 改进\n- 开着「单击格子直接编辑」时，点一下格子，光标落在点的那个字旁边，不再总是跑到最后；想改中间的字点一下就行（B 站反馈）。双击进编辑还是放在最后。",
+  "en": "### Changed\n- With \"Edit a cell with a single click\" on, the cursor now lands where you click instead of always at the end, so you can change text in the middle with one click (reported on Bilibili). Double-clicking still puts the cursor at the end."
+ },
+ {
   "version": "0.31.0",
   "date": "2026-11-28",
   "zh": "### 修复\n- 打开 Obsidian 的「从右到左」后，表格的操作是反的（#23）。表格从右往左排时，下面这些现在都按屏幕上的方向来：\n  - 方向键：按 ← 去屏幕左边那一格；编辑时光标到了一端再按方向键，跳到那一边的格子。\n  - 拖列宽：拖每一列左边那条线，往左拖变宽（以前改的是旁边那一列）。\n  - 行手柄在表格右边外面，整表菜单按钮在右上角，填充柄在选中格的左下角，加一列的按钮在左边。\n  - 冻结首列贴在右边；横向滚动时两边的渐隐、浮动的横向滚动条跟着表格走。\n  - 菜单里的「在左侧插入列」「左移一列」等按屏幕上的左右来做。\n  - 用鼠标、手指框选，拖填充柄，拖列换顺序，也都按从右往左算。",
@@ -53,11 +59,5 @@ export const WHATS_NEW: { version: string; date: string; zh: string; en: string 
   "date": "2026-11-23",
   "zh": "### 新增\n- 设置「隐藏表格上方的空行」（默认关，B 站天堂鸟0 的建议）：Markdown 规定表格前面要空一行，实时预览里会留出一截空白；打开后藏起来，表格紧贴着上面的文字，光标移到这一行时照常显示。只改显示，笔记里的空行还在。\n- 「把选中的文字转成表格」能认更多分列方式（小红书反馈）：两个以上空格、全角空格（AI 对话、网页上复制来的对齐文字），每行列数一样的单个空格，还有带竖线的 Markdown 表格样子的文字。以前只认制表符和逗号。\n- 插件的样式文件 styles.css 没加载时（手动安装漏了这个文件、同步盘没同步过来），启动后弹出提示，说明去哪里检查或者重新安装。以前只会看到表格下面多出一排按钮、每行很高（B 站反馈）。",
   "en": "### Added\n- \"Hide the blank line above tables\" setting (off by default, suggested on Bilibili): Markdown needs a blank line before a table, which leaves a gap in Live Preview. On: that line is hidden so the table sits right under the text above, and it shows again when the cursor is on it. Display only — the blank line stays in your notes.\n- \"Convert selected text to table\" understands more ways of splitting columns (requested on Xiaohongshu): two or more spaces or full-width spaces (aligned text copied from AI chats or web pages), single spaces when every line has the same number of columns, and text that looks like a Markdown table with pipes. Before, only tabs and commas worked.\n- If the plugin's styles.css didn't load (left out of a manual install, or not synced yet), a notice now says where to check or to reinstall. Before, tables just showed a row of buttons underneath and very tall rows (reported on Bilibili)."
- },
- {
-  "version": "0.24.1",
-  "date": "2026-11-22",
-  "zh": "### 修复\n- 有的主题或 CSS 片段把表格格子统一设成居中，这时选中格子点「左对齐」没反应，点「居中」也看不出变化（B 站反馈）。现在对齐写在格子里面那层，主题的设置盖不掉，编辑格子时也一样。",
-  "en": "### Fixed\n- With themes or CSS snippets that center all table cells, \"Align left\" had no effect and \"Align center\" looked like it did nothing (reported on Bilibili). Alignment is now applied inside the cell, so the theme can no longer override it, including while editing."
  }
 ];

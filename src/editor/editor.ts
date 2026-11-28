@@ -2028,6 +2028,10 @@ export class TableEditor {
       if (!cell || target.closest("a, .tag, input, img, .ggt-secret-btn, .internal-embed")) return;
       if (Number(cell.dataset.r) !== this.sel.r || Number(cell.dataset.c) !== this.sel.c) return;
       this.startEdit(true);
+      // 光标放在点的地方，不放到最后：想改中间的字点一下就行（B 站衣裳IrKeng）
+      if (!this.editing) return;
+      const pos = this.input.posAt(ev.clientX, ev.clientY);
+      if (pos !== null) this.input.setSelectionRange(pos, pos);
     });
     this.on(this.tableEl, "dblclick", (ev) => {
       const target = ev.target as HTMLElement;
