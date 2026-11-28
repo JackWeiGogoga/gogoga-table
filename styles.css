@@ -710,6 +710,7 @@ body.is-mobile .ggt-menu { z-index: 2147483000; backdrop-filter: none; -webkit-b
 .ggt .ggt-input-cm .ggt-ed-code { padding: 0 0.3em; border-radius: 3px; background: rgba(127, 127, 127, 0.18); font-family: var(--font-monospace, monospace); }
 .ggt .ggt-input-cm .ggt-ed-mark { background: var(--text-highlight-bg, rgba(255, 210, 0, 0.45)); border-radius: 2px; color: inherit; }
 .ggt .ggt-input-cm .ggt-ed-syntax { opacity: 0.45; }
+.ggt .ggt-input-cm .ggt-ed-link { color: var(--link-color, var(--text-accent)); }
 .ggt .ggt-input-cm .ggt-ed-mark[data-highlight="red"] { background: var(--highlight-background-red, rgba(var(--color-red-rgb, 233, 49, 71), 0.3)); }
 .ggt .ggt-input-cm .ggt-ed-mark[data-highlight="orange"] { background: var(--highlight-background-orange, rgba(var(--color-orange-rgb, 236, 117, 0), 0.3)); }
 .ggt .ggt-input-cm .ggt-ed-mark[data-highlight="yellow"] { background: var(--highlight-background-yellow, rgba(var(--color-yellow-rgb, 224, 172, 0), 0.3)); }

@@ -23,6 +23,7 @@ import { formatFx, type FxEmpty, type FxError, nameOk, prettyOps } from "../core
 import { fromTSV, sourceAttr, toHTML, toTSV } from "../core/clipboard";
 import { type InlineFormat } from "../core/format";
 import { applyFormat } from "../core/format-apply";
+import { pastedLink } from "../core/paste-link";
 import { type CellInput, CodeMirrorInput, type Edge, TextareaInput } from "./cell-input";
 import { hbarBottom } from "./hbar-position";
 import { isSealed } from "../core/secret";
@@ -3375,6 +3376,20 @@ export class TableEditor {
 
   private onPaste(ev: ClipboardEvent): void {
     if (!this.sel || this.host.readonly || !ev.clipboardData) return;
+    // 编辑时选中了字再粘贴网址或本地路径：包成 [文字](网址)，和 Obsidian 编辑器、脑图节点一样（B 站 FORMORE）
+    if (this.editing && !this.input.composing) {
+      const from = this.input.selectionStart;
+      const to = this.input.selectionEnd;
+      const v = this.input.value;
+      const link = from !== to ? pastedLink(v.slice(from, to), ev.clipboardData.getData("text/plain")) : null;
+      if (link) {
+        ev.preventDefault();
+        this.input.value = v.slice(0, from) + link + v.slice(to);
+        this.input.setSelectionRange(from + link.length, from + link.length);
+        this.autosize();
+        return;
+      }
+    }
     const grid = this.editing ? null : gridFromClipboard(ev.clipboardData, this.root.ownerDocument);
     // 截图、复制的图片：存成附件，格子里插 ![[…]]（剪贴板里是一张表时还是按表粘）
     const image = this.host.saveImage && !(grid && (grid.length > 1 || grid[0].length > 1)) ? imageFrom(ev.clipboardData) : null;

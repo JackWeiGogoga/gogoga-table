@@ -1,5 +1,6 @@
 /** 实时预览、阅读视图共用：用 Obsidian 的能力（Markdown 渲染、图标、设置）拼出编辑器的宿主 */
 
+import { rankLinkTargets } from "../core/link-rank";
 import { type ColorMemory, pushRecent } from "../core/color-palette";
 import { type App, type Component, type HoverParent, Keymap, MarkdownRenderer, Menu, Notice, requestUrl, setIcon, type TFile } from "obsidian";
 import type { EditorHost, MenuItem, TableEditor } from "../editor/editor";
@@ -272,15 +273,13 @@ export function makeFactory(app: App, settings: () => TableSettings, persist: ()
           settings().formatBar || root?.closest(".mm-note-live") ? { text: FORMAT_TEXT_COLORS, highlight: FORMAT_HIGHLIGHT_COLORS } : null,
         colorMemory: () => colorMemory,
         dailyNote: () => dailyNote(app),
-        // [[ 补全：笔记按名字找（名字开头的排前面），插的是 Obsidian 生成的最短链接
+        // [[ 补全：排序和脑图一样（core/link-rank.ts），笔记排在图片等附件前面；插的是 Obsidian 生成的最短链接
         suggestLinks: (query) => {
-          const q = query.toLowerCase();
-          const files = app.vault.getFiles().filter((f) => f.basename.toLowerCase().includes(q));
-          files.sort((a, b) => Number(b.basename.toLowerCase().startsWith(q)) - Number(a.basename.toLowerCase().startsWith(q)) || a.basename.length - b.basename.length);
-          return files.slice(0, 12).map((f) => {
-            const text = app.metadataCache.fileToLinktext(f, sourcePath, true);
-            return text;
-          });
+          const files = app.vault
+            .getFiles()
+            .sort((a, b) => b.stat.mtime - a.stat.mtime)
+            .map((f) => ({ file: f, name: f.extension === "md" ? f.basename : f.name, folder: f.parent && f.parent.path !== "/" ? f.parent.path : "", isNote: f.extension === "md" }));
+          return rankLinkTargets(files, query, 12).map((x) => app.metadataCache.fileToLinktext(x.file, sourcePath, true));
         },
         // # 补全：库里已有的标签
         suggestTags: (query) => {
