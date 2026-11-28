@@ -4,6 +4,17 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-11-28
+
+### 修复
+- 打开 Obsidian 的「从右到左」后，表格的操作是反的（#23）。表格从右往左排时，下面这些现在都按屏幕上的方向来：
+  - 方向键：按 ← 去屏幕左边那一格；编辑时光标到了一端再按方向键，跳到那一边的格子。
+  - 拖列宽：拖每一列左边那条线，往左拖变宽（以前改的是旁边那一列）。
+  - 行手柄在表格右边外面，整表菜单按钮在右上角，填充柄在选中格的左下角，加一列的按钮在左边。
+  - 冻结首列贴在右边；横向滚动时两边的渐隐、浮动的横向滚动条跟着表格走。
+  - 菜单里的「在左侧插入列」「左移一列」等按屏幕上的左右来做。
+  - 用鼠标、手指框选，拖填充柄，拖列换顺序，也都按从右往左算。
+
 ## [0.30.1] - 2026-11-28
 
 ### 改进
@@ -475,7 +486,8 @@ gogoga Table 每个版本的主要变化都记在这里。格式参照 [Keep a C
 ### 新增
 - 第一个版本：实时预览和阅读视图里的 Markdown 表格换成 Notion 风格的表格。点格子编辑，Enter / Tab 跳格，加行加列，行列手柄和右键菜单，拖列宽，七种底色，三套样式和两档行距；手机上点一下编辑、长按出菜单。选一片格子一起设底色、对齐、清空；和 Excel、飞书、网页互相复制粘贴；合并单元格；拖动行列手柄调整顺序；长表格表头吸顶，宽表格左右有滚动提示。下拉填充；表格左上角菜单（单表样式、三线表、标题列、整表对齐、平均分布列宽、撑满页面）；按列排序；复制行列、一次插入多行；勾选框；文字颜色；合计行；状态列；编辑格子时的格式快捷键和 [[ 链接、# 标签补全；插入表格、文字转表格等命令。复制带样式的 HTML。兼容 Advanced Tables 的公式注释和块标识。文件仍是标准 Markdown 表格，列宽、颜色、合并等存在表格下面的一行注释里。
 
-[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.30.1...HEAD
+[Unreleased]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.31.0...HEAD
+[0.31.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.30.1...0.31.0
 [0.30.1]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.30.0...0.30.1
 [0.30.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.29.0...0.30.0
 [0.29.0]: https://github.com/JackWeiGogoga/gogoga-table/compare/0.28.0...0.29.0

@@ -1,6 +1,12 @@
 // 构建时由 scripts/gen-whatsnew.mjs 从 CHANGELOG 生成，别直接改
 export const WHATS_NEW: { version: string; date: string; zh: string; en: string }[] = [
  {
+  "version": "0.31.0",
+  "date": "2026-11-28",
+  "zh": "### 修复\n- 打开 Obsidian 的「从右到左」后，表格的操作是反的（#23）。表格从右往左排时，下面这些现在都按屏幕上的方向来：\n  - 方向键：按 ← 去屏幕左边那一格；编辑时光标到了一端再按方向键，跳到那一边的格子。\n  - 拖列宽：拖每一列左边那条线，往左拖变宽（以前改的是旁边那一列）。\n  - 行手柄在表格右边外面，整表菜单按钮在右上角，填充柄在选中格的左下角，加一列的按钮在左边。\n  - 冻结首列贴在右边；横向滚动时两边的渐隐、浮动的横向滚动条跟着表格走。\n  - 菜单里的「在左侧插入列」「左移一列」等按屏幕上的左右来做。\n  - 用鼠标、手指框选，拖填充柄，拖列换顺序，也都按从右往左算。",
+  "en": "### Fixed\n- With Obsidian's \"Right-to-left (RTL)\" setting on, table interactions were reversed (#23). When a table is laid out right to left, these now follow the direction on screen:\n  - Arrow keys: ← moves to the cell on the left of the screen; while editing, an arrow key at that end of the text jumps to the cell on that side.\n  - Column widths: drag a column's left edge, and dragging left widens it (before, the neighboring column changed).\n  - The row handle sits outside the table's right edge, the table menu button at the top-right corner, the fill handle at the bottom-left of the selection, and the add-column button on the left.\n  - A frozen first column sticks to the right; the side fades and the floating horizontal scrollbar follow the table when it scrolls sideways.\n  - Menu items such as \"Insert column left\" and \"Move column left\" use left and right as seen on screen.\n  - Selecting cells with the mouse or a finger, dragging the fill handle and dragging columns to reorder them all work right to left."
+ },
+ {
   "version": "0.30.1",
   "date": "2026-11-28",
   "zh": "### 改进\n- 编辑格子时（开着「编辑格子时直接显示格式」），`[[笔记]]`、`[文字](网址)` 这些链接显示成链接色，`[[`、`]]` 变淡，和 Obsidian 编辑器里一样；正在打的 `[[…` 也是链接色（B 站反馈）。\n- 输入 `[[` 的补全里，名字差不多时笔记排在图片等附件前面，没打字时按最近修改排（B 站反馈）。\n\n### 修复\n- 编辑格子时选中文字再粘贴网址或本地文件路径，现在会变成 `[文字](网址)`，和 Obsidian 自带的表格一样（B 站反馈）。没选中文字时照常粘贴。\n- 宽表格铺到窗口右边时，可视区底部浮出的横向滚动条会盖住右下角的状态栏。现在滚动条抬到状态栏上面，状态栏照常能点（#21，感谢 @zlzhang96）。",
@@ -53,11 +59,5 @@ export const WHATS_NEW: { version: string; date: string; zh: string; en: string 
   "date": "2026-11-22",
   "zh": "### 修复\n- 有的主题或 CSS 片段把表格格子统一设成居中，这时选中格子点「左对齐」没反应，点「居中」也看不出变化（B 站反馈）。现在对齐写在格子里面那层，主题的设置盖不掉，编辑格子时也一样。",
   "en": "### Fixed\n- With themes or CSS snippets that center all table cells, \"Align left\" had no effect and \"Align center\" looked like it did nothing (reported on Bilibili). Alignment is now applied inside the cell, so the theme can no longer override it, including while editing."
- },
- {
-  "version": "0.24.0",
-  "date": "2026-11-22",
-  "zh": "### 新增\n- 手机、平板上也能合并单元格了（小红书反馈）：长按格子，格子右下角露出圆点，按住圆点拖就选出一片，松手弹出的菜单第一项就是「合并单元格」。电脑上这个圆点照旧是下拉填充。\n- 手机、平板上编辑有字的格子时，长按交给系统（挪光标、选字、粘贴），表格菜单出不来。键盘上方的表格工具条加了「表格菜单」按钮（⋯），点它收起键盘、弹出这一格的菜单。\n\n### 修复\n- 手机上编辑格子时，键盘上方那排表格工具条（完成、撤销、加粗、双链、上一格 / 下一格等）一直看不到：iPhone 上被键盘挡住，没弹键盘时被底部导航栏压住，Obsidian 自己的编辑工具条还叠在上面。现在它贴在键盘上方，编辑格子时 Obsidian 那条先收起来。\n- 手机上键盘弹着的时候长按格子（光标在格子里或表格外的正文里），表格菜单被键盘挡住。现在先收起键盘再弹菜单。",
-  "en": "### Added\n- Merge cells on phones and tablets (requested on Xiaohongshu): long-press a cell and a dot appears at its bottom-right corner; drag the dot to select a block, and the menu that opens on release has \"Merge cells\" at the top. On desktop the dot still fills down.\n- On phones and tablets, long-pressing a cell that has text while editing it goes to the system (cursor, text selection, paste), so the table menu couldn't be reached. The table toolbar above the keyboard now has a Table menu button (⋯) that closes the keyboard and opens the menu for that cell.\n\n### Fixed\n- On phones, the table toolbar above the keyboard (Done, Undo, Bold, links, previous / next cell and so on) never showed: on iPhone it sat behind the keyboard, without a keyboard the bottom navigation bar covered it, and Obsidian's own editing toolbar sat on top of it. It now sits right above the keyboard, and Obsidian's toolbar is hidden while you edit a cell.\n- On phones, long-pressing a cell while the keyboard was up (cursor in a cell or in the note around the table) opened the table menu behind the keyboard. The keyboard now closes first."
  }
 ];
